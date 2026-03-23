@@ -46,20 +46,56 @@ class User(db.Model):
         return check_password_hash(self.passwd_hash, password)
 
 
+class Post(db.Model):
+    __tablename__ = 'posts'
+
+    # Уникальный ид поста (PRIMARY KEY)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    # Автор (ссылка на таблицу users)
+    author = db.Column(db.String(80), nullable=False, index=True)
+
+    # Дата + время создания
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    # Путь (строка неопределённой длины, пока не используется)
+    path = db.Column(db.Text, nullable=True)
+
+    # Текст поста
+    content = db.Column(db.Text, nullable=False)
+
+    # Связь с пользователем (опционально, для удобства)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+
+    def __repr__(self):
+        return f'<Post {self.id} by {self.author}>'
+
+    def to_dict(self):
+        """Сериализация в словарь"""
+        return {
+            'id': self.id,
+            'author': self.author,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'path': self.path,
+            'content': self.content
+        }
+
 # 3. Инициализация БД
 def init_database():
+    """Создание всех таблиц в БД"""
     with app.app_context():
-        # Создание всех таблиц
         db.create_all()
-        print(f"✅ База данных создана: {db_dir}/forum.db")
-        print("✅ Таблица 'users' успешно создана!")
+        print(f"✅ База данных: {db_dir}/forum.db")
+        print("✅ Таблицы 'users' и 'posts' созданы!")
 
-        # Проверка структуры (для отладки)
+        # Вывод структуры таблиц
         inspector = db.inspect(db.engine)
-        columns = inspector.get_columns('users')
-        print("\n📋 Структура таблицы:")
-        for col in columns:
-            print(f"   - {col['name']} ({col['type']})")
+        for table_name in ['users', 'posts']:
+            print(f"\n📋 Таблица '{table_name}':")
+            columns = inspector.get_columns(table_name)
+            for col in columns:
+                nullable = "NULL" if col['nullable'] else "NOT NULL"
+                print(f"   - {col['name']}: {col['type']} ({nullable})")
 
 
 if __name__ == '__main__':

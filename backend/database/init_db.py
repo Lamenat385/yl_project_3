@@ -1,13 +1,15 @@
 import sys
 from pathlib import Path
 
+from flask_login import UserMixin
+
 # Добавляем корень проекта в sys.path для правильных импортов
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
 # 1. Конфигурация приложения
@@ -24,7 +26,7 @@ db = SQLAlchemy(app)
 
 
 # 2. ORM Модель
-class User(db.Model):
+class User(UserMixin, db.Model):  # ← Добавляем UserMixin
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -33,53 +35,61 @@ class User(db.Model):
     tg_id = db.Column(db.String(100), unique=True, nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Связи
+    posts = db.relationship('Post', backref='author_user', lazy='dynamic', cascade='all, delete-orphan')
+
     def __repr__(self):
         return f'<User {self.username}>'
 
     def set_password(self, password):
-        """Хеширование пароля"""
         self.passwd_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        """Проверка пароля"""
-        from werkzeug.security import check_password_hash
         return check_password_hash(self.passwd_hash, password)
 
 
 class Post(db.Model):
     __tablename__ = 'posts'
 
-    # Уникальный ид поста (PRIMARY KEY)
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-
-    # Автор (ссылка на таблицу users)
     author = db.Column(db.String(80), nullable=False, index=True)
-
-    # Дата + время создания
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-
-    # Путь (строка неопределённой длины, пока не используется)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
     path = db.Column(db.Text, nullable=True)
-
-    # Текст поста
-    content = db.Column(db.Text, nullable=False)
-
-    # Связь с пользователем (опционально, для удобства)
+    content = db.Column(db.Text, nullable=False)  # Исходный Markdown
+    content_html = db.Column(db.Text, nullable=True)  # Рендеренный HTML
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+
+    # Медиа (список файлов/картинок в посте)
+    attached_images = db.Column(db.Text, nullable=True)  # JSON строка
+    attached_files = db.Column(db.Text, nullable=True)  # JSON строка
 
     def __repr__(self):
         return f'<Post {self.id} by {self.author}>'
 
+    def render_content(self) -> str:
+        """Рендерит Markdown в HTML"""
+        if self.content_html:
+            return self.content_html
+        # Если content_html нет, рендерим на лету
+        from .markdown_parser import parse_markdown
+        return parse_markdown(self.content)
+
+    def set_content(self, content: str):
+        """Устанавливает контент и генерирует HTML"""
+        from .markdown_parser import parse_markdown
+        self.content = content
+        self.content_html = parse_markdown(content)
+
     def to_dict(self):
-        """Сериализация в словарь"""
         return {
             'id': self.id,
             'author': self.author,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'path': self.path,
-            'content': self.content
+            'content': self.content,
+            'content_html': self.render_content()
         }
-
 # 3. Инициализация БД
 def init_database():
     """Создание всех таблиц в БД"""

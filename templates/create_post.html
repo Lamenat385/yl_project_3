@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Создать пост - GoldForum{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card border-gold">
+            <div class="card-header bg-black border-gold">
+                <h3 class="text-gold mb-0">📝 Создание нового поста</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" id="postForm">
+
+                    <!-- Заголовок -->
+                    <div class="mb-3">
+                        <label for="title" class="form-label text-gold">Заголовок</label>
+                        <input type="text"
+                               class="form-control bg-dark text-white border-secondary"
+                               id="title"
+                               name="title"
+                               placeholder="Введите заголовок поста..."
+                               required>
+                    </div>
+
+                    <!-- Панель инструментов -->
+                    <div class="mb-2">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="insertMarkdown('**', '**')" title="Жирный">
+                                <strong>B</strong>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="insertMarkdown('*', '*')" title="Курсив">
+                                <em>I</em>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="insertMarkdown('```', '```')" title="Код">
+                                &lt;/&gt;
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="insertMarkdown('# ', '')" title="Заголовок">
+                                H1
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="insertMarkdown('## ', '')" title="Подзаголовок">
+                                H2
+                            </button>
+                        </div>
+
+                        <div class="btn-group ms-2" role="group">
+                            <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('imageUpload').click()" title="Добавить изображение">
+                                🖼️ Изображение
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('fileUpload').click()" title="Добавить файл">
+                                📁 Файл
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Скрытые input для загрузки -->
+                    <input type="file" id="imageUpload" accept="image/*" style="display: none;" onchange="handleImageUpload(this)">
+                    <input type="file" id="fileUpload" style="display: none;" onchange="handleFileUpload(this)">
+
+                    <!-- Индикатор загрузки -->
+                    <div id="uploadProgress" class="alert alert-info d-none">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        <span id="uploadText">Загрузка...</span>
+                    </div>
+
+                    <!-- Поле ввода текста -->
+                    <div class="mb-3">
+                        <label for="content" class="form-label text-gold">Текст поста (Markdown)</label>
+                        <textarea class="form-control bg-dark text-white border-secondary"
+                                  id="content"
+                                  name="content"
+                                  rows="12"
+                                  placeholder="Пишите текст поста...&#10;&#10;Для вставки картинки нажмите 'Изображение'&#10;Для вставки файла нажмите 'Файл'"
+                                  oninput="updatePreview()"
+                                  required></textarea>
+                        <small class="text-muted">Поддерживается Markdown + вставка медиа</small>
+                    </div>
+
+                    <!-- Предпросмотр -->
+                    <div class="mb-3">
+                        <label class="form-label text-gold">👁️ Предпросмотр</label>
+                        <div class="card bg-black border-secondary">
+                            <div class="card-body" id="preview" style="min-height: 200px; max-height: 500px; overflow-y: auto;">
+                                <p class="text-muted">Здесь будет отображаться предпросмотр вашего поста...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Кнопки действий -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Отмена</a>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            🚀 Опубликовать
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Стили для предпросмотра -->
+<style>
+    #preview img {
+        max-width: 100%;
+        border: 2px solid #D4AF37;
+        border-radius: 8px;
+        margin: 10px 0;
+    }
+    #preview pre {
+        background: #1a1a1a;
+        border: 1px solid #D4AF37;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    #preview blockquote {
+        border-left: 4px solid #D4AF37;
+        padding-left: 15px;
+        color: #aaa;
+    }
+    #preview a {
+        color: #D4AF37;
+    }
+    #preview table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+    }
+    #preview th, #preview td {
+        border: 1px solid #444;
+        padding: 8px;
+    }
+    #preview th {
+        background: #1a1a1a;
+        color: #D4AF37;
+    }
+</style>
+
+<!-- Скрипты -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    // Обновление предпросмотра
+    function updatePreview() {
+        const content = document.getElementById('content').value;
+        const preview = document.getElementById('preview');
+
+        if (content.trim()) {
+            preview.innerHTML = marked.parse(content);
+        } else {
+            preview.innerHTML = '<p class="text-muted">Здесь будет отображаться предпросмотр вашего поста...</p>';
+        }
+    }
+
+    // Вставка Markdown символов
+    function insertMarkdown(before, after) {
+        const textarea = document.getElementById('content');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const selectedText = text.substring(start, end);
+
+        const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+        textarea.value = newText;
+        textarea.focus();
+        textarea.selectionStart = start + before.length;
+        textarea.selectionEnd = start + before.length + selectedText.length;
+
+        updatePreview();
+    }
+
+    // Загрузка изображения
+    async function handleImageUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        showProgress('Загрузка изображения...');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/upload/image', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Вставка в формате: ![описание](/data/posts/images/уникальный-id.расширение)
+                const markdown = `\n![${file.name}](${data.url})\n`;
+                insertAtCursor(markdown);
+                hideProgress();
+                updatePreview();
+            } else {
+                alert('Ошибка загрузки: ' + data.error);
+                hideProgress();
+            }
+        } catch (error) {
+            alert('Ошибка сети: ' + error);
+            hideProgress();
+        }
+
+        input.value = ''; // Сброс
+    }
+
+    // Загрузка файла
+    async function handleFileUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        showProgress('Загрузка файла...');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/upload/file', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Вставка в формате: [Скачать файл](/data/posts/files/уникальный-id.расширение)
+                const markdown = `\n[📥 Скачать: ${file.name}](${data.url})\n`;
+                insertAtCursor(markdown);
+                hideProgress();
+                updatePreview();
+            } else {
+                alert('Ошибка загрузки: ' + data.error);
+                hideProgress();
+            }
+        } catch (error) {
+            alert('Ошибка сети: ' + error);
+            hideProgress();
+        }
+
+        input.value = ''; // Сброс
+    }
+
+    // Вставка текста в позицию курсора
+    function insertAtCursor(text) {
+        const textarea = document.getElementById('content');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const currentText = textarea.value;
+
+        textarea.value = currentText.substring(0, start) + text + currentText.substring(end);
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    }
+
+    // Показ прогресса
+    function showProgress(text) {
+        document.getElementById('uploadProgress').classList.remove('d-none');
+        document.getElementById('uploadText').textContent = text;
+    }
+
+    // Скрытие прогресса
+    function hideProgress() {
+        document.getElementById('uploadProgress').classList.add('d-none');
+    }
+
+    // Инициализация предпросмотра при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePreview();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Вход - GoldForum{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card border-gold">
+            <div class="card-header bg-black border-gold">
+                <h3 class="text-gold mb-0 text-center">🔐 Вход</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label text-gold">Имя пользователя</label>
+                        <input type="text"
+                               class="form-control bg-dark text-white border-secondary"
+                               id="username"
+                               name="username"
+                               placeholder="Username"
+                               required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label text-gold">Пароль</label>
+                        <input type="password"
+                               class="form-control bg-dark text-white border-secondary"
+                               id="password"
+                               name="password"
+                               placeholder="••••••••"
+                               required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mb-3">
+                        Войти
+                    </button>
+                </form>
+
+                <hr class="border-secondary">
+
+                <p class="text-center mb-0">
+                    Нет аккаунта?
+                    <a href="{{ url_for('register') }}" class="text-gold">Зарегистрироваться</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

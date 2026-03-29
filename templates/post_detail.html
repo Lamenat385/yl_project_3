@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title or 'Пост' }} - GoldForum{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card border-gold mb-4">
+            <div class="card-header bg-black border-gold">
+                <h2 class="text-gold mb-0">{{ post.title or 'Без заголовка' }}</h2>
+            </div>
+            <div class="card-body">
+                <div class="mb-3 text-muted">
+                    <strong>Автор:</strong> 
+                    <a href="{{ url_for('profile', user_id=post.user_id) }}" class="text-gold">
+                        {{ post.author }}
+                    </a> | 
+                    <strong>Дата:</strong> 
+                    {{ post.created_at.strftime('%d.%m.%Y %H:%M') }}
+                </div>
+                
+                <hr class="border-gold">
+                
+                <div class="post-content text-white" style="line-height: 1.6;">
+                    {% if post.content_html %}
+                        {{ post.content_html|safe }}
+                    {% else %}
+                        {{ post.content|safe }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+            ← Назад к ленте
+        </a>
+    </div>
+</div>
+{% endblock %}

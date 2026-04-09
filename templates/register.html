@@ -10,41 +10,36 @@
                 <h3 class="text-gold mb-0 text-center">📝 Регистрация</h3>
             </div>
             <div class="card-body">
+                {% if message %}
+                <div class="alert alert-danger">{{ message }}</div>
+                {% endif %}
                 <form method="POST">
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
-                        <label for="username" class="form-label text-gold">Имя пользователя</label>
-                        <input type="text"
-                               class="form-control bg-dark text-white border-secondary"
-                               id="username"
-                               name="username"
-                               placeholder="Придумайте логин"
-                               minlength="3"
-                               required>
+                        <label for="username" class="form-label text-gold">{{ form.username.label }}</label>
+                        {{ form.username(class="form-control bg-dark text-white border-secondary", placeholder="Придумайте логин") }}
                         <small class="text-muted">Минимум 3 символа</small>
                     </div>
 
                     <div class="mb-3">
-                        <label for="password" class="form-label text-gold">Пароль</label>
-                        <input type="password"
-                               class="form-control bg-dark text-white border-secondary"
-                               id="password"
-                               name="password"
-                               placeholder="••••••••"
-                               minlength="6"
-                               required>
+                        <label for="password" class="form-label text-gold">{{ form.password.label }}</label>
+                        {{ form.password(class="form-control bg-dark text-white border-secondary", placeholder="••••••••") }}
                         <small class="text-muted">Минимум 6 символов</small>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-100 mb-3">
-                        Зарегистрироваться
-                    </button>
+                    <div class="mb-3">
+                        <label for="password_again" class="form-label text-gold">{{ form.password_again.label }}</label>
+                        {{ form.password_again(class="form-control bg-dark text-white border-secondary", placeholder="••••••••") }}
+                    </div>
+
+                    {{ form.submit(class="btn btn-primary w-100 mb-3") }}
                 </form>
 
                 <hr class="border-secondary">
 
                 <p class="text-center mb-0">
                     Уже есть аккаунт?
-                    <a href="{{ url_for('login') }}" class="text-gold">Войти</a>
+                    <a href="/login" class="text-gold">Войти</a>
                 </p>
             </div>
         </div>

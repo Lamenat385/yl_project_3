@@ -1,0 +1,7 @@
+.venv/
+tunnel.bat
+.data/
+.idea
+.gitignore
+__pycache__
+.qwenignore

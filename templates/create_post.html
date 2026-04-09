@@ -10,17 +10,16 @@
                 <h3 class="text-gold mb-0">📝 Создание нового поста</h3>
             </div>
             <div class="card-body">
-                <form method="POST" enctype="multipart/form-data" id="postForm">
+                {% if message %}
+                <div class="alert alert-danger">{{ message }}</div>
+                {% endif %}
+                <form method="POST" id="postForm">
+                    {{ form.hidden_tag() }}
 
                     <!-- Заголовок -->
                     <div class="mb-3">
-                        <label for="title" class="form-label text-gold">Заголовок</label>
-                        <input type="text"
-                               class="form-control bg-dark text-white border-secondary"
-                               id="title"
-                               name="title"
-                               placeholder="Введите заголовок поста..."
-                               required>
+                        <label for="title" class="form-label text-gold">{{ form.title.label }}</label>
+                        {{ form.title(class="form-control bg-dark text-white border-secondary", placeholder="Введите заголовок поста...") }}
                     </div>
 
                     <!-- Панель инструментов -->
@@ -65,14 +64,8 @@
 
                     <!-- Поле ввода текста -->
                     <div class="mb-3">
-                        <label for="content" class="form-label text-gold">Текст поста (Markdown)</label>
-                        <textarea class="form-control bg-dark text-white border-secondary"
-                                  id="content"
-                                  name="content"
-                                  rows="12"
-                                  placeholder="Пишите текст поста...&#10;&#10;Для вставки картинки нажмите 'Изображение'&#10;Для вставки файла нажмите 'Файл'"
-                                  oninput="updatePreview()"
-                                  required></textarea>
+                        <label for="content" class="form-label text-gold">{{ form.content.label }}</label>
+                        {{ form.content(class="form-control bg-dark text-white border-secondary", rows="12", placeholder="Пишите текст поста...&#10;&#10;Для вставки картинки нажмите 'Изображение'&#10;Для вставки файла нажмите 'Файл'", oninput="updatePreview()") }}
                         <small class="text-muted">Поддерживается Markdown + вставка медиа</small>
                     </div>
 
@@ -88,10 +81,8 @@
 
                     <!-- Кнопки действий -->
                     <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Отмена</a>
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            🚀 Опубликовать
-                        </button>
+                        <a href="/" class="btn btn-secondary">Отмена</a>
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
                     </div>
                 </form>
             </div>
@@ -187,7 +178,6 @@
             const data = await response.json();
 
             if (data.success) {
-                // Вставка в формате: ![описание](/data/posts/images/уникальный-id.расширение)
                 const markdown = `\n![${file.name}](${data.url})\n`;
                 insertAtCursor(markdown);
                 hideProgress();
@@ -201,7 +191,7 @@
             hideProgress();
         }
 
-        input.value = ''; // Сброс
+        input.value = '';
     }
 
     // Загрузка файла
@@ -223,7 +213,6 @@
             const data = await response.json();
 
             if (data.success) {
-                // Вставка в формате: [Скачать файл](/data/posts/files/уникальный-id.расширение)
                 const markdown = `\n[📥 Скачать: ${file.name}](${data.url})\n`;
                 insertAtCursor(markdown);
                 hideProgress();
@@ -237,7 +226,7 @@
             hideProgress();
         }
 
-        input.value = ''; // Сброс
+        input.value = '';
     }
 
     // Вставка текста в позицию курсора

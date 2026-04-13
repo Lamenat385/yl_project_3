@@ -32,6 +32,9 @@
                     <li class="nav-item {% if request.path == '/' or request.path == '/index' %}active{% endif %}">
                         <a class="nav-link" href="/">📰 Лента</a>
                     </li>
+                    <li class="nav-item {% if request.path == '/search' %}active{% endif %}">
+                        <a class="nav-link" href="/search">🔍 Поиск</a>
+                    </li>
                     {% if current_user.is_authenticated %}
                     <li class="nav-item {% if request.path == '/post/new' %}active{% endif %}">
                         <a class="nav-link" href="/post/new">✏️ Создать пост</a>

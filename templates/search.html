@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Поиск - GoldForum{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-gold mb-0">🔍 Поиск</h2>
+</div>
+
+<!-- Переключатель между поиском постов и авторов -->
+<div class="card border-secondary mb-4">
+    <div class="card-body">
+        <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
+            <label class="btn btn-outline-warning active flex-fill text-center search-type-btn" id="posts-search-label">
+                <input type="radio" name="searchType" id="posts-search" checked> 📝 Поиск постов
+            </label>
+            <label class="btn btn-outline-warning flex-fill text-center search-type-btn" id="authors-search-label">
+                <input type="radio" name="searchType" id="authors-search"> 👥 Поиск авторов
+            </label>
+        </div>
+    </div>
+</div>
+
+<!-- Форма поиска постов -->
+<div id="posts-search-form" class="card border-secondary mb-4">
+    <div class="card-body">
+        <form method="GET" action="/search" id="search-form">
+            <input type="hidden" name="type" value="posts" id="search-type-input">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control bg-dark text-white" 
+                       placeholder="Введите запрос для поиска постов..." 
+                       value="{{ query if search_type == 'posts' else '' }}"
+                       id="search-input">
+                <div class="input-group-append">
+                    <button class="btn btn-warning" type="submit">
+                        <i class="fas fa-search"></i> Найти
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Форма поиска авторов (скрыта по умолчанию) -->
+<div id="authors-search-form" class="card border-secondary mb-4" style="display: none;">
+    <div class="card-body">
+        <form method="GET" action="/search" id="search-form-authors">
+            <input type="hidden" name="type" value="authors" id="search-type-input-authors">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control bg-dark text-white" 
+                       placeholder="Введите имя автора для поиска..." 
+                       value="{{ query if search_type == 'authors' else '' }}"
+                       id="search-input-authors">
+                <div class="input-group-append">
+                    <button class="btn btn-warning" type="submit">
+                        <i class="fas fa-search"></i> Найти
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Результаты поиска постов -->
+{% if search_type == 'posts' and results is defined %}
+<div class="card border-secondary">
+    <div class="card-header bg-secondary text-gold">
+        <h5 class="mb-0">📝 Результаты поиска постов</h5>
+    </div>
+    <div class="card-body">
+        {% if results %}
+            <p class="text-muted mb-3">Найдено постов: {{ results|length }}</p>
+            {% for post in results %}
+            <div class="card mb-3 border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title text-gold">
+                        <a href="/post/{{ post.id }}" class="text-decoration-none">
+                            {{ post.title }}
+                        </a>
+                    </h5>
+                    <h6 class="card-subtitle mb-2 text-muted">
+                        Автор: <a href="/profile/{{ post.author_id }}" class="text-gold">
+                            {{ post.author }}
+                        </a> |
+                        {{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else 'Неизвестно' }}
+                        {% if post.distance is defined %}
+                        <span class="badge badge-dark ml-2">
+                            Схожесть: {{ "%.2f"|format((1 - post.distance) * 100) }}%
+                        </span>
+                        {% endif %}
+                    </h6>
+                    <p class="card-text text-white">
+                        {{ post.content_preview or post.content[:200] }}{% if post.content and post.content|length > 200 %}...{% endif %}
+                    </p>
+                    <a href="/post/{{ post.id }}" class="btn btn-sm btn-outline-warning">
+                        Читать далее →
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info text-center">
+                <p class="mb-0">😕 Постов не найдено. Попробуйте другой запрос.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Результаты поиска авторов -->
+{% if search_type == 'authors' and authors_results is defined %}
+<div class="card border-secondary">
+    <div class="card-header bg-secondary text-gold">
+        <h5 class="mb-0">👥 Результаты поиска авторов</h5>
+    </div>
+    <div class="card-body">
+        {% if authors_results %}
+            <p class="text-muted mb-3">Найдено авторов: {{ authors_results|length }}</p>
+            {% for author in authors_results %}
+            <div class="card mb-3 border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title text-gold">
+                        <a href="/profile/{{ author.id }}" class="text-decoration-none">
+                            <i class="fas fa-user"></i> {{ author.username }}
+                        </a>
+                    </h5>
+                    <h6 class="card-subtitle mb-2 text-muted">
+                        Постов: {{ author.posts_count }} |
+                        Зарегистрирован: {{ author.created_at.strftime('%d.%m.%Y') if author.created_at else 'Неизвестно' }}
+                    </h6>
+                    <a href="/profile/{{ author.id }}" class="btn btn-sm btn-outline-warning">
+                        Перейти в профиль →
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info text-center">
+                <p class="mb-0">😕 Авторов не найдено. Попробуйте другой запрос.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Переключение между типами поиска
+document.addEventListener('DOMContentLoaded', function() {
+    const postsSearchLabel = document.getElementById('posts-search-label');
+    const authorsSearchLabel = document.getElementById('authors-search-label');
+    const postsSearchForm = document.getElementById('posts-search-form');
+    const authorsSearchForm = document.getElementById('authors-search-form');
+    const postsSearchRadio = document.getElementById('posts-search');
+    const authorsSearchRadio = document.getElementById('authors-search');
+    
+    // Текущий тип поиска
+    const currentType = '{{ search_type }}';
+    if (currentType === 'authors') {
+        postsSearchLabel.classList.remove('active');
+        authorsSearchLabel.classList.add('active');
+        postsSearchForm.style.display = 'none';
+        authorsSearchForm.style.display = 'block';
+        postsSearchRadio.checked = false;
+        authorsSearchRadio.checked = true;
+    }
+    
+    postsSearchLabel.addEventListener('click', function() {
+        postsSearchRadio.checked = true;
+        postsSearchForm.style.display = 'block';
+        authorsSearchForm.style.display = 'none';
+        postsSearchLabel.classList.add('active');
+        authorsSearchLabel.classList.remove('active');
+    });
+    
+    authorsSearchLabel.addEventListener('click', function() {
+        authorsSearchRadio.checked = true;
+        authorsSearchForm.style.display = 'block';
+        postsSearchForm.style.display = 'none';
+        authorsSearchLabel.classList.add('active');
+        postsSearchLabel.classList.remove('active');
+    });
+});
+</script>
+{% endblock %}

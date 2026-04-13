@@ -18,6 +18,9 @@ from backend.database.models.users_model import UserModel
 from backend.database import default_data
 from backend.database.markdown_parser import parse_markdown
 
+# Векторная база данных
+from backend.vector_db import vector_db
+
 # API
 from backend.errors import *
 from backend.api import posts_api
@@ -142,6 +145,10 @@ def new_post():
         post.user_id = current_user.id
         db_sess.add(post)
         db_sess.commit()
+        
+        # Добавляем пост в векторную базу
+        vector_db.sync_post(post.id, post.title, post.content, post.author)
+        
         return redirect(url_for('post_detail', post_id=post.id))
     return render_template('create_post.html', title='Создание поста', form=form)
 
@@ -163,6 +170,64 @@ def profile(user_id):
         abort(404)
     posts = db_sess.query(PostModel).filter_by(user_id=user.id).order_by(PostModel.created_at.desc()).all()
     return render_template('profile.html', user=user, posts=posts)
+
+
+@app.route('/search')
+def search():
+    """Страница поиска постов и авторов"""
+    query = request.args.get('q', '').strip()
+    search_type = request.args.get('type', 'posts')  # 'posts' или 'authors'
+    
+    results = None
+    authors_results = None
+    
+    if query:
+        if search_type == 'posts':
+            # Векторный поиск постов
+            vector_results = vector_db.search_posts(query, n_results=20)
+            
+            # Получаем полную информацию о постах из БД
+            db_sess = db_session.create_session()
+            results = []
+            for vec_post in vector_results:
+                post = db_sess.get(PostModel, vec_post['id'])
+                if post:
+                    results.append({
+                        'id': post.id,
+                        'title': vec_post['title'],
+                        'author': post.author,
+                        'author_id': post.user_id,
+                        'content': post.content,
+                        'content_preview': vec_post.get('content_preview', post.content[:200]),
+                        'created_at': post.created_at,
+                        'distance': vec_post['distance']
+                    })
+        
+        elif search_type == 'authors':
+            # Классический поиск авторов по имени (нестрогий)
+            db_sess = db_session.create_session()
+            # Используем LIKE для нестрогого поиска
+            authors = db_sess.query(UserModel).filter(
+                UserModel.username.ilike(f'%{query}%')
+            ).all()
+            
+            authors_results = []
+            for author in authors:
+                posts_count = db_sess.query(PostModel).filter_by(user_id=author.id).count()
+                authors_results.append({
+                    'id': author.id,
+                    'username': author.username,
+                    'created_at': author.created_at,
+                    'posts_count': posts_count
+                })
+    
+    return render_template(
+        'search.html',
+        query=query,
+        search_type=search_type,
+        results=results,
+        authors_results=authors_results
+    )
 
 
 # ==================== API ЗАГРУЗКИ ФАЙЛОВ ====================
@@ -227,6 +292,19 @@ def serve_file(filename):
 
 # ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
+def sync_vector_database():
+    """Синхронизирует векторную базу с существующими постами"""
+    db_sess = db_session.create_session()
+    all_posts = db_sess.query(PostModel).all()
+    
+    synced_count = 0
+    for post in all_posts:
+        vector_db.sync_post(post.id, post.title or "Без заголовка", post.content, post.author)
+        synced_count += 1
+    
+    print(f"✅ Векторная база синхронизирована: {synced_count} постов")
+
+
 def main():
     # Регистрация обработчиков ошибок
     app.register_error_handler(400, bad_request)
@@ -263,6 +341,9 @@ def main():
 
     db_session.global_init("data/sql_db/forum.db")
     default_data.default_data()
+    
+    # Синхронизируем векторную базу
+    sync_vector_database()
 
     app.register_blueprint(posts_api.blueprint)
 

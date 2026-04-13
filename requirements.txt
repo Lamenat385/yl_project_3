@@ -8,3 +8,5 @@ flask-restful
 alembic
 markdown
 werkzeug
+chromadb
+sentence-transformers

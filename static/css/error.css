@@ -1,0 +1,95 @@
+/* ==================== ERROR PAGE STYLES ==================== */
+
+.error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    padding: 2rem 0;
+}
+
+.error-content {
+    text-align: center;
+    max-width: 600px;
+    padding: 3rem;
+    background: var(--bg-card);
+    border: 2px solid var(--gold-primary);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(212, 175, 55, 0.15);
+}
+
+.error-icon {
+    font-size: 4rem;
+    color: var(--gold-primary);
+    margin-bottom: 1.5rem;
+}
+
+.error-icon i {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.error-title {
+    font-size: 2rem;
+    color: var(--gold-primary);
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.error-message {
+    font-size: 1.1rem;
+    color: var(--text-main);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+.error-code {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    font-family: monospace;
+}
+
+.error-btn {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    background-color: var(--gold-primary);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.error-btn:hover {
+    background-color: var(--gold-hover);
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+/* Специфичные стили для разных ошибок */
+.error-container[data-error-type="404"] .error-icon {
+    color: var(--gold-primary);
+}
+
+.error-container[data-error-type="500"] .error-icon {
+    color: #dc3545;
+}
+
+.error-container[data-error-type="403"] .error-icon {
+    color: #ffc107;
+}
+
+.error-container[data-error-type="401"] .error-icon {
+    color: #17a2b8;
+}

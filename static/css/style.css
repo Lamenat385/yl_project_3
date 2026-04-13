@@ -1,0 +1,276 @@
+/* ==================== GOLD FORUM THEME ==================== */
+
+:root {
+    --bg-black: #050505;
+    --bg-card: #121212;
+    --bg-dark: #1a1a1a;
+    --gold-primary: #D4AF37;
+    --gold-hover: #B59024;
+    --gold-light: #F4CF57;
+    --text-main: #E0E0E0;
+    --text-muted: #A0A0A0;
+}
+
+/* ==================== ОБЩИЕ СТИЛИ ==================== */
+
+body {
+    background-color: var(--bg-black);
+    color: var(--text-main);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+a {
+    color: var(--gold-primary);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--gold-light);
+}
+
+.text-gold {
+    color: var(--gold-primary) !important;
+}
+
+.border-gold {
+    border-color: var(--gold-primary) !important;
+}
+
+.bg-black {
+    background-color: #000 !important;
+}
+
+/* ==================== НАВИГАЦИЯ ==================== */
+
+.navbar {
+    background-color: #000 !important;
+    border-bottom: 2px solid var(--gold-primary);
+    padding: 1rem 0;
+}
+
+.navbar-brand {
+    color: var(--gold-primary) !important;
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+}
+
+.navbar-brand:hover {
+    color: var(--gold-light) !important;
+}
+
+.nav-link {
+    color: var(--text-main) !important;
+    transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+    color: var(--gold-primary) !important;
+}
+
+.nav-link.active {
+    color: var(--gold-primary) !important;
+    font-weight: 600;
+}
+
+/* ==================== КНОПКИ ==================== */
+
+.btn-primary {
+    background-color: var(--gold-primary);
+    border-color: var(--gold-primary);
+    color: #000;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: var(--gold-hover);
+    border-color: var(--gold-hover);
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+.btn-outline-warning {
+    color: var(--gold-primary);
+    border-color: var(--gold-primary);
+}
+
+.btn-outline-warning:hover {
+    background-color: var(--gold-primary);
+    color: #000;
+}
+
+.btn-secondary {
+    background-color: #444;
+    border-color: #444;
+    color: var(--text-main);
+}
+
+.btn-secondary:hover {
+    background-color: #555;
+    border-color: #555;
+}
+
+/* ==================== КАРТОЧКИ ==================== */
+
+.card {
+    background-color: var(--bg-card);
+    border: 1px solid #333;
+    transition: border-color 0.3s ease;
+}
+
+.card:hover {
+    border-color: var(--gold-primary);
+}
+
+.card-header {
+    background-color: var(--bg-dark);
+    border-bottom: 1px solid #333;
+}
+
+.card-body {
+    background-color: var(--bg-card);
+}
+
+/* ==================== ФОРМЫ ==================== */
+
+.form-control {
+    background-color: var(--bg-dark);
+    border: 1px solid #444;
+    color: var(--text-main);
+}
+
+.form-control:focus {
+    background-color: var(--bg-dark);
+    border-color: var(--gold-primary);
+    color: var(--text-main);
+    box-shadow: 0 0 0 0.25rem rgba(212, 175, 55, 0.25);
+}
+
+.form-control::placeholder {
+    color: var(--text-muted);
+}
+
+.form-label {
+    color: var(--gold-primary);
+    font-weight: 500;
+}
+
+/* ==================== ФЛЕШ СООБЩЕНИЯ ==================== */
+
+.alert {
+    border-radius: 8px;
+    border: 1px solid;
+}
+
+.alert-success {
+    background-color: rgba(40, 167, 69, 0.2);
+    border-color: #28a745;
+    color: #75b798;
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.2);
+    border-color: #dc3545;
+    color: #ea868f;
+}
+
+.alert-info {
+    background-color: rgba(13, 202, 240, 0.2);
+    border-color: #0dcaf0;
+    color: #6edff6;
+}
+
+.alert-warning {
+    background-color: rgba(255, 193, 7, 0.2);
+    border-color: var(--gold-primary);
+    color: var(--gold-light);
+}
+
+/* ==================== ПРОКРУТКА ==================== */
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-black);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gold-primary);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gold-hover);
+}
+
+/* ==================== ФУТЕР ==================== */
+
+footer {
+    margin-top: auto;
+    border-top: 1px solid #333;
+    padding: 2rem 0;
+    background-color: #000;
+}
+
+/* ==================== ПРЕДПРОСМОТР POST ==================== */
+
+.post-content img {
+    max-width: 100%;
+    border: 2px solid var(--gold-primary);
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+.post-content pre {
+    background: var(--bg-dark);
+    border: 1px solid var(--gold-primary);
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.post-content blockquote {
+    border-left: 4px solid var(--gold-primary);
+    padding-left: 15px;
+    color: var(--text-muted);
+}
+
+.post-content a {
+    color: var(--gold-primary);
+}
+
+.post-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+
+.post-content th, .post-content td {
+    border: 1px solid #444;
+    padding: 8px;
+}
+
+.post-content th {
+    background: var(--bg-dark);
+    color: var(--gold-primary);
+}
+
+/* ==================== АДАПТИВНОСТЬ ==================== */
+
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}

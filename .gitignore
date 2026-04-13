@@ -1,6 +1,5 @@
 .venv/
 tunnel.bat
-.data/
 .idea
 .gitignore
 __pycache__

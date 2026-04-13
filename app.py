@@ -15,6 +15,7 @@ from backend.forms.post_form import PostForm
 from backend.database import db_session
 from backend.database.models.posts_model import PostModel
 from backend.database.models.users_model import UserModel
+from backend.database.models.user_post_interaction import UserPostInteraction
 from backend.database import default_data
 from backend.database.markdown_parser import parse_markdown
 
@@ -24,6 +25,7 @@ from backend.vector_db import vector_db
 # API
 from backend.errors import *
 from backend.api import posts_api
+from backend.api import interactions_api
 from backend.resources import posts_resources
 
 # ==================== КОНФИГУРАЦИЯ ====================
@@ -52,7 +54,10 @@ for dir_path in [UPLOAD_DIR, IMAGES_DIR, FILES_DIR, PROJECT_ROOT / 'data' / 'sql
 @login_manager.user_loader
 def load_user(user_id):
     db_sess = db_session.create_session()
-    return db_sess.get(UserModel, user_id)
+    try:
+        return db_sess.get(UserModel, user_id)
+    finally:
+        db_sess.close()
 
 
 # ==================== МАРШРУТЫ ====================
@@ -69,14 +74,17 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         db_sess = db_session.create_session()
-        user = db_sess.query(UserModel).filter(
-            UserModel.username == form.username.data).first()
-        if user and user.check_password(form.password.data):
-            login_user(user, remember=form.remember_me.data)
-            return redirect("/")
-        return render_template('login.html',
-                               message="Неправильное имя пользователя или пароль",
-                               form=form)
+        try:
+            user = db_sess.query(UserModel).filter(
+                UserModel.username == form.username.data).first()
+            if user and user.check_password(form.password.data):
+                login_user(user, remember=form.remember_me.data)
+                return redirect("/")
+            return render_template('login.html',
+                                   message="Неправильное имя пользователя или пароль",
+                                   form=form)
+        finally:
+            db_sess.close()
     return render_template('login.html', title='Авторизация', form=form)
 
 
@@ -103,18 +111,24 @@ def register():
                                    message="Пароль должен быть не менее 6 символов")
 
         db_sess = db_session.create_session()
-        if db_sess.query(UserModel).filter(UserModel.username == form.username.data).first():
-            return render_template('register.html', title='Регистрация',
-                                   form=form,
-                                   message="Такой пользователь уже есть")
+        try:
+            if db_sess.query(UserModel).filter(UserModel.username == form.username.data).first():
+                return render_template('register.html', title='Регистрация',
+                                       form=form,
+                                       message="Такой пользователь уже есть")
 
-        user = UserModel(
-            username=form.username.data,
-        )
-        user.set_password(form.password.data)
-        db_sess.add(user)
-        db_sess.commit()
-        return redirect('/login')
+            user = UserModel(
+                username=form.username.data,
+            )
+            user.set_password(form.password.data)
+            db_sess.add(user)
+            db_sess.commit()
+            return redirect('/login')
+        except Exception:
+            db_sess.rollback()
+            raise
+        finally:
+            db_sess.close()
     return render_template('register.html', title='Регистрация', form=form)
 
 
@@ -122,8 +136,20 @@ def register():
 @app.route('/index')
 def index():
     db_sess = db_session.create_session()
-    posts = db_sess.query(PostModel).order_by(PostModel.created_at.desc()).limit(20).all()
-    return render_template("index.html", posts=posts)
+    try:
+        posts = db_sess.query(PostModel).order_by(PostModel.created_at.desc()).limit(50).all()
+
+        # Получаем статусы взаимодействий для авторизованного пользователя
+        interactions = {}
+        if current_user.is_authenticated:
+            user_interactions = db_sess.query(UserPostInteraction).filter_by(
+                user_id=current_user.id
+            ).all()
+            interactions = {i.post_id: i for i in user_interactions}
+
+        return render_template("index.html", posts=posts, interactions=interactions)
+    finally:
+        db_sess.close()
 
 
 @app.route('/post/new', methods=['GET', 'POST'])
@@ -137,39 +163,90 @@ def new_post():
                                    message="Заголовок и текст обязательны")
 
         db_sess = db_session.create_session()
-        post = PostModel()
-        post.title = form.title.data
-        post.content = form.content.data
-        post.content_html = parse_markdown(form.content.data)
-        post.author = current_user.username
-        post.user_id = current_user.id
-        db_sess.add(post)
-        db_sess.commit()
-        
-        # Добавляем пост в векторную базу
-        vector_db.sync_post(post.id, post.title, post.content, post.author)
-        
-        return redirect(url_for('post_detail', post_id=post.id))
+        try:
+            post = PostModel()
+            post.title = form.title.data
+            post.content = form.content.data
+            post.content_html = parse_markdown(form.content.data)
+            post.author = current_user.username
+            post.user_id = current_user.id
+            db_sess.add(post)
+            db_sess.commit()
+
+            # Добавляем пост в векторную базу
+            vector_db.sync_post(post.id, post.title, post.content, post.author)
+
+            return redirect(url_for('post_detail', post_id=post.id))
+        except Exception:
+            db_sess.rollback()
+            raise
+        finally:
+            db_sess.close()
     return render_template('create_post.html', title='Создание поста', form=form)
 
 
 @app.route('/post/<int:post_id>')
 def post_detail(post_id):
     db_sess = db_session.create_session()
-    post = db_sess.get(PostModel, post_id)
-    if not post:
-        abort(404)
-    return render_template('post_detail.html', post=post)
+    try:
+        post = db_sess.get(PostModel, post_id)
+        if not post:
+            abort(404)
+        return render_template('post_detail.html', post=post)
+    finally:
+        db_sess.close()
 
 
 @app.route('/profile/<int:user_id>')
 def profile(user_id):
     db_sess = db_session.create_session()
-    user = db_sess.get(UserModel, user_id)
-    if not user:
-        abort(404)
-    posts = db_sess.query(PostModel).filter_by(user_id=user.id).order_by(PostModel.created_at.desc()).all()
-    return render_template('profile.html', user=user, posts=posts)
+    try:
+        user = db_sess.get(UserModel, user_id)
+        if not user:
+            abort(404)
+
+        posts = db_sess.query(PostModel).filter_by(user_id=user.id).order_by(PostModel.created_at.desc()).all()
+
+        # Вкладки видны только владельцу профиля
+        is_owner = current_user.is_authenticated and current_user.id == user_id
+
+        liked_posts = []
+        favorite_posts = []
+        read_posts = []
+
+        if is_owner:
+            # Получаем посты, которые понравились
+            liked_interactions = db_sess.query(UserPostInteraction).filter_by(
+                user_id=user.id, is_liked=True
+            ).all()
+            liked_post_ids = [i.post_id for i in liked_interactions]
+            liked_posts = db_sess.query(PostModel).filter(PostModel.id.in_(liked_post_ids)).order_by(PostModel.created_at.desc()).all()
+
+            # Получаем избранные посты
+            favorite_interactions = db_sess.query(UserPostInteraction).filter_by(
+                user_id=user.id, is_favorite=True
+            ).all()
+            favorite_post_ids = [i.post_id for i in favorite_interactions]
+            favorite_posts = db_sess.query(PostModel).filter(PostModel.id.in_(favorite_post_ids)).order_by(PostModel.created_at.desc()).all()
+
+            # Получаем прочитанные посты
+            read_interactions = db_sess.query(UserPostInteraction).filter_by(
+                user_id=user.id, is_read=True
+            ).all()
+            read_post_ids = [i.post_id for i in read_interactions]
+            read_posts = db_sess.query(PostModel).filter(PostModel.id.in_(read_post_ids)).order_by(PostModel.created_at.desc()).all()
+
+        return render_template(
+            'profile.html',
+            user=user,
+            posts=posts,
+            is_owner=is_owner,
+            liked_posts=liked_posts,
+            favorite_posts=favorite_posts,
+            read_posts=read_posts
+        )
+    finally:
+        db_sess.close()
 
 
 @app.route('/search')
@@ -177,50 +254,56 @@ def search():
     """Страница поиска постов и авторов"""
     query = request.args.get('q', '').strip()
     search_type = request.args.get('type', 'posts')  # 'posts' или 'authors'
-    
+
     results = None
-    authors_results = None
-    
+    authors_results = []
+
     if query:
         if search_type == 'posts':
             # Векторный поиск постов
             vector_results = vector_db.search_posts(query, n_results=20)
-            
+
             # Получаем полную информацию о постах из БД
             db_sess = db_session.create_session()
-            results = []
-            for vec_post in vector_results:
-                post = db_sess.get(PostModel, vec_post['id'])
-                if post:
-                    results.append({
-                        'id': post.id,
-                        'title': vec_post['title'],
-                        'author': post.author,
-                        'author_id': post.user_id,
-                        'content': post.content,
-                        'content_preview': vec_post.get('content_preview', post.content[:200]),
-                        'created_at': post.created_at,
-                        'distance': vec_post['distance']
-                    })
-        
+            try:
+                results = []
+                for vec_post in vector_results:
+                    post = db_sess.get(PostModel, vec_post['id'])
+                    if post:
+                        results.append({
+                            'id': post.id,
+                            'title': vec_post['title'],
+                            'author': post.author,
+                            'author_id': post.user_id,
+                            'content': post.content,
+                            'content_preview': vec_post.get('content_preview', post.content[:200]),
+                            'created_at': post.created_at,
+                            'distance': vec_post['distance']
+                        })
+            finally:
+                db_sess.close()
+
         elif search_type == 'authors':
             # Классический поиск авторов по имени (нестрогий)
             db_sess = db_session.create_session()
-            # Используем LIKE для нестрогого поиска
-            authors = db_sess.query(UserModel).filter(
-                UserModel.username.ilike(f'%{query}%')
-            ).all()
-            
-            authors_results = []
-            for author in authors:
-                posts_count = db_sess.query(PostModel).filter_by(user_id=author.id).count()
-                authors_results.append({
-                    'id': author.id,
-                    'username': author.username,
-                    'created_at': author.created_at,
-                    'posts_count': posts_count
-                })
-    
+            try:
+                # Используем LIKE для нестрогого поиска
+                authors = db_sess.query(UserModel).filter(
+                    UserModel.username.ilike(f'%{query}%')
+                ).all()
+
+                authors_results = []
+                for author in authors:
+                    posts_count = db_sess.query(PostModel).filter_by(user_id=author.id).count()
+                    authors_results.append({
+                        'id': author.id,
+                        'username': author.username,
+                        'created_at': author.created_at,
+                        'posts_count': posts_count
+                    })
+            finally:
+                db_sess.close()
+
     return render_template(
         'search.html',
         query=query,
@@ -295,14 +378,17 @@ def serve_file(filename):
 def sync_vector_database():
     """Синхронизирует векторную базу с существующими постами"""
     db_sess = db_session.create_session()
-    all_posts = db_sess.query(PostModel).all()
-    
-    synced_count = 0
-    for post in all_posts:
-        vector_db.sync_post(post.id, post.title or "Без заголовка", post.content, post.author)
-        synced_count += 1
-    
-    print(f"✅ Векторная база синхронизирована: {synced_count} постов")
+    try:
+        all_posts = db_sess.query(PostModel).all()
+
+        synced_count = 0
+        for post in all_posts:
+            vector_db.sync_post(post.id, post.title or "Без заголовка", post.content, post.author)
+            synced_count += 1
+
+        print(f"✅ Векторная база синхронизирована: {synced_count} постов")
+    finally:
+        db_sess.close()
 
 
 def main():
@@ -346,6 +432,7 @@ def main():
     sync_vector_database()
 
     app.register_blueprint(posts_api.blueprint)
+    app.register_blueprint(interactions_api.blueprint)
 
     # Flask-RESTful ресурсы
     api.add_resource(posts_resources.PostListResource, '/api/v2/posts')

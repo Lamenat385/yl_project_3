@@ -28,6 +28,41 @@
                         {{ post.content|safe }}
                     {% endif %}
                 </div>
+                
+                <!-- Кнопки взаимодействий -->
+                {% if current_user.is_authenticated %}
+                <hr class="border-gold">
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div class="d-flex">
+                        <!-- Лайк -->
+                        <button class="btn btn-sm btn-interaction mr-2" 
+                                id="btn-like" 
+                                data-post-id="{{ post.id }}"
+                                data-action="like"
+                                data-active="false">
+                            <i class="fas fa-heart"></i> <span class="btn-text">Нравится</span>
+                        </button>
+                        
+                        <!-- Прочитано -->
+                        <button class="btn btn-sm btn-interaction mr-2" 
+                                id="btn-read" 
+                                data-post-id="{{ post.id }}"
+                                data-action="read"
+                                data-active="false">
+                            <i class="fas fa-check"></i> <span class="btn-text">Прочитано</span>
+                        </button>
+                        
+                        <!-- Избранное -->
+                        <button class="btn btn-sm btn-interaction mr-2" 
+                                id="btn-favorite" 
+                                data-post-id="{{ post.id }}"
+                                data-action="favorite"
+                                data-active="false">
+                            <i class="fas fa-star"></i> <span class="btn-text">В избранное</span>
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -36,4 +71,116 @@
         </a>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if current_user.is_authenticated %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const postId = {{ post.id }};
+    const buttons = document.querySelectorAll('.btn-interaction');
+
+    // Загружаем статусы взаимодействий
+    fetch(`/api/interactions/post/${postId}/status`)
+        .then(response => response.json())
+        .then(data => {
+            // Обновляем состояние кнопок
+            updateButtonState('btn-like', data.is_liked, 'Нравится', 'Понравилось');
+            updateButtonState('btn-read', data.is_read, 'Прочитано', 'Прочитано ✓');
+            updateButtonState('btn-favorite', data.is_favorite, 'В избранное', 'В избранном ★');
+        })
+        .catch(error => console.error('Ошибка загрузки статусов:', error));
+
+    // Обработчик кликов по кнопкам
+    buttons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const action = this.dataset.action;
+            const buttonId = this.id;
+
+            // Отправляем запрос на сервер
+            fetch('/api/interactions/toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    post_id: postId,
+                    action: action
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Обновляем состояние кнопки на основе ответа сервера
+                    const activeTexts = {
+                        'like': 'Понравилось',
+                        'read': 'Прочитано ✓',
+                        'favorite': 'В избранном ★'
+                    };
+                    const inactiveTexts = {
+                        'like': 'Нравится',
+                        'read': 'Прочитано',
+                        'favorite': 'В избранное'
+                    };
+
+                    updateButtonState(
+                        buttonId,
+                        data.state,
+                        inactiveTexts[action],
+                        activeTexts[action]
+                    );
+                } else {
+                    console.error('Ошибка переключения:', data.error);
+                }
+            })
+            .catch(error => console.error('Ошибка:', error));
+        });
+    });
+
+    function updateButtonState(buttonId, isActive, inactiveText, activeText) {
+        const button = document.getElementById(buttonId);
+        if (!button) return;
+
+        const textSpan = button.querySelector('.btn-text');
+        
+        button.dataset.active = isActive;
+
+        if (isActive) {
+            button.classList.add('active');
+            if (textSpan) textSpan.textContent = activeText;
+        } else {
+            button.classList.remove('active');
+            if (textSpan) textSpan.textContent = inactiveText;
+        }
+    }
+});
+</script>
+
+<style>
+.btn-interaction {
+    background-color: transparent;
+    border: 1px solid #666;
+    color: #999;
+    transition: all 0.3s ease;
+}
+
+.btn-interaction:hover {
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+}
+
+.btn-interaction.active {
+    background-color: var(--gold-primary);
+    border-color: var(--gold-primary);
+    color: #000;
+}
+
+.btn-interaction.active:hover {
+    background-color: #c49b2a;
+    border-color: #c49b2a;
+}
+</style>
+{% endif %}
 {% endblock %}

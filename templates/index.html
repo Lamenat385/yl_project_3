@@ -14,19 +14,64 @@
 
 {% if posts %}
     {% for item in posts %}
-    <div class="card mb-3 border-secondary">
+    {% set interaction = interactions.get(item.id) %}
+    
+    {% if not interaction or not interaction.is_not_interested %}
+    <div class="card mb-3 border-secondary feed-post-card" id="post-card-{{ item.id }}" data-post-id="{{ item.id }}">
         <div class="card-body">
-            <h5 class="card-title text-gold">
-                <a href="/post/{{ item.id }}" class="text-decoration-none">
-                    {{ item.title or 'Без заголовка' }}
-                </a>
-            </h5>
-            <h6 class="card-subtitle mb-2 text-muted">
-                Автор: <a href="/profile/{{ item.user_id }}" class="text-gold">
-                    {{ item.author }}
-                </a> |
-                {{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else 'Неизвестно' }}
-            </h6>
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <h5 class="card-title text-gold">
+                        <a href="/post/{{ item.id }}" class="text-decoration-none">
+                            {{ item.title or 'Без заголовка' }}
+                        </a>
+                    </h5>
+                    <h6 class="card-subtitle mb-2 text-muted">
+                        Автор: <a href="/profile/{{ item.user_id }}" class="text-gold">
+                            {{ item.author }}
+                        </a> |
+                        {{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else 'Неизвестно' }}
+                    </h6>
+                </div>
+                
+                <!-- Кнопки действий в ленте (только для авторизованных) -->
+                {% if current_user.is_authenticated %}
+                <div class="d-flex flex-column align-items-end ml-3">
+                    <!-- Лайк -->
+                    <button class="btn btn-sm btn-lazy mb-1 btn-like-feed {% if interaction and interaction.is_liked %}active{% endif %}"
+                            data-post-id="{{ item.id }}"
+                            data-action="like"
+                            title="Нравится">
+                        <i class="fas fa-heart"></i>
+                    </button>
+
+                    <!-- В избранное -->
+                    <button class="btn btn-sm btn-lazy mb-1 btn-favorite-feed {% if interaction and interaction.is_favorite %}active{% endif %}"
+                            data-post-id="{{ item.id }}"
+                            data-action="favorite"
+                            title="Добавить в избранное">
+                        <i class="fas fa-star"></i>
+                    </button>
+
+                    <!-- Прочитано -->
+                    <button class="btn btn-sm btn-lazy mb-1 btn-read-feed {% if interaction and interaction.is_read %}active{% endif %}"
+                            data-post-id="{{ item.id }}"
+                            data-action="read"
+                            title="Отметить как прочитанное">
+                        <i class="fas fa-check"></i>
+                    </button>
+
+                    <!-- Не интересно -->
+                    <button class="btn btn-sm btn-lazy btn-not-interested-feed {% if interaction and interaction.is_not_interested %}active{% endif %}"
+                            data-post-id="{{ item.id }}"
+                            data-action="not_interested"
+                            title="Скрыть из ленты">
+                        <i class="fas fa-eye-slash"></i>
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            
             <p class="card-text text-white">
                 {{ item.content[:200] }}{% if item.content|length > 200 %}...{% endif %}
             </p>
@@ -35,10 +80,110 @@
             </a>
         </div>
     </div>
+    {% endif %}
     {% endfor %}
 {% else %}
     <div class="alert alert-info text-center">
         <p class="mb-0">📭 Постов пока нет. Будьте первым!</p>
     </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if current_user.is_authenticated %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработчик для всех кнопок взаимодействий в ленте
+    document.querySelectorAll('.btn-like-feed, .btn-favorite-feed, .btn-read-feed, .btn-not-interested-feed').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            const postId = this.dataset.postId;
+            const action = this.dataset.action;
+            const btn = this;
+
+            // Отправляем запрос на сервер
+            fetch('/api/interactions/toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    post_id: parseInt(postId),
+                    action: action
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Переключаем состояние кнопки
+                    btn.classList.toggle('active');
+                    
+                    // Обновляем в зависимости от типа действия
+                    if (action === 'not_interested' && data.state) {
+                        // Скрываем пост из ленты
+                        const card = document.getElementById(`post-card-${postId}`);
+                        if (card) {
+                            card.style.transition = 'opacity 0.5s, transform 0.5s';
+                            card.style.opacity = '0';
+                            card.style.transform = 'translateX(-100%)';
+                            setTimeout(() => {
+                                card.style.display = 'none';
+                            }, 500);
+                        }
+                    }
+                } else {
+                    console.error('Ошибка переключения:', data.error);
+                }
+            })
+            .catch(error => console.error('Ошибка:', error));
+        });
+    });
+});
+</script>
+
+<style>
+.btn-lazy {
+    background-color: transparent;
+    border: 1px solid #555;
+    color: #777;
+    padding: 0.2rem 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-lazy:hover {
+    border-color: var(--gold-primary);
+    color: var(--gold-primary);
+}
+
+.btn-lazy.active {
+    background-color: var(--gold-primary);
+    border-color: var(--gold-primary);
+    color: #000;
+}
+
+.btn-like-feed.active {
+    background-color: #e74c3c;
+    border-color: #e74c3c;
+    color: #fff;
+}
+
+.btn-favorite-feed.active {
+    background-color: #D4AF37;
+    color: #000;
+}
+
+.btn-read-feed.active {
+    background-color: #27ae60;
+    border-color: #27ae60;
+    color: #fff;
+}
+
+.btn-not-interested-feed.active {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: #fff;
+}
+</style>
 {% endif %}
 {% endblock %}

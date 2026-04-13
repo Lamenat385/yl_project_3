@@ -19,7 +19,16 @@ def global_init(db_file):
     conn_str = f'sqlite:///{db_file.strip()}?check_same_thread=False'
     print(f"Подключение к базе данных по адресу {conn_str}")
 
-    engine = sa.create_engine(conn_str, echo=False)
+    # Настраиваем пул соединений для предотвращения TimeoutError
+    engine = sa.create_engine(
+        conn_str,
+        echo=False,
+        pool_size=20,  # Увеличиваем размер пула
+        max_overflow=30,  # Увеличиваем максимальное переполнение
+        pool_timeout=60,  # Увеличиваем таймаут ожидания
+        pool_recycle=3600,  # Пересоздаем соединения каждый час
+        pool_pre_ping=True  # Проверяем соединение перед использованием
+    )
     __factory = orm.sessionmaker(bind=engine)
 
     from . import __all_models

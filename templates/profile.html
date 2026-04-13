@@ -21,8 +21,133 @@
     </div>
 
     <div class="col-md-8">
-        <h4 class="text-gold mb-3">Посты пользователя ({{ posts|length }})</h4>
+        {% if is_owner %}
+        <!-- Вкладки видны только владельцу -->
+        <ul class="nav nav-tabs mb-3" id="profileTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="posts-tab" data-toggle="tab" href="#posts" role="tab">
+                    📝 Мои посты (<span id="posts-count">{{ posts|length }}</span>)
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="liked-tab" data-toggle="tab" href="#liked" role="tab">
+                    ❤️ Понравившиеся (<span id="liked-count">{{ liked_posts|length }}</span>)
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="favorites-tab" data-toggle="tab" href="#favorites" role="tab">
+                    ⭐ Избранное (<span id="favorites-count">{{ favorite_posts|length }}</span>)
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="read-tab" data-toggle="tab" href="#read" role="tab">
+                    ✓ Прочитанные (<span id="read-count">{{ read_posts|length }}</span>)
+                </a>
+            </li>
+        </ul>
 
+        <div class="tab-content" id="profileTabContent">
+            <!-- Мои посты -->
+            <div class="tab-pane fade show active" id="posts" role="tabpanel">
+                <div id="posts-content">
+                    {% if posts %}
+                        {% for post in posts %}
+                        <div class="card mb-3 border-secondary">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a href="/post/{{ post.id }}" class="text-gold text-decoration-none">
+                                        {{ post.title or 'Без заголовка' }}
+                                    </a>
+                                </h5>
+                                <small class="text-muted">{{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else 'Неизвестно' }}</small>
+                                <p class="mt-2 mb-0">{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center py-3">Вы ещё не опубликовали постов</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Понравившиеся -->
+            <div class="tab-pane fade" id="liked" role="tabpanel">
+                <div id="liked-content">
+                    {% if liked_posts %}
+                        {% for post in liked_posts %}
+                        <div class="card mb-3 border-secondary">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a href="/post/{{ post.id }}" class="text-gold text-decoration-none">
+                                        ❤️ {{ post.title or 'Без заголовка' }}
+                                    </a>
+                                </h5>
+                                <small class="text-muted">
+                                    Автор: {{ post.author }} | {{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else 'Неизвестно' }}
+                                </small>
+                                <p class="mt-2 mb-0">{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center py-3">Вы ещё не лайкали постов</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Избранное -->
+            <div class="tab-pane fade" id="favorites" role="tabpanel">
+                <div id="favorites-content">
+                    {% if favorite_posts %}
+                        {% for post in favorite_posts %}
+                        <div class="card mb-3 border-secondary">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a href="/post/{{ post.id }}" class="text-gold text-decoration-none">
+                                        ⭐ {{ post.title or 'Без заголовка' }}
+                                    </a>
+                                </h5>
+                                <small class="text-muted">
+                                    Автор: {{ post.author }} | {{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else 'Неизвестно' }}
+                                </small>
+                                <p class="mt-2 mb-0">{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center py-3">У вас пока нет избранных постов</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Прочитанные -->
+            <div class="tab-pane fade" id="read" role="tabpanel">
+                <div id="read-content">
+                    {% if read_posts %}
+                        {% for post in read_posts %}
+                        <div class="card mb-3 border-secondary">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a href="/post/{{ post.id }}" class="text-gold text-decoration-none">
+                                        ✓ {{ post.title or 'Без заголовка' }}
+                                    </a>
+                                </h5>
+                                <small class="text-muted">
+                                    Автор: {{ post.author }} | {{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else 'Неизвестно' }}
+                                </small>
+                                <p class="mt-2 mb-0">{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center py-3">Вы ещё не отмечали постов как прочитанные</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Для чужих профилей — только посты -->
+        <h4 class="text-gold mb-3">Посты пользователя ({{ posts|length }})</h4>
         {% if posts %}
             {% for post in posts %}
             <div class="card mb-3 border-secondary">
@@ -33,13 +158,127 @@
                         </a>
                     </h5>
                     <small class="text-muted">{{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else 'Неизвестно' }}</small>
-                    <p class="mt-2 mb-0">{{ post.content[:150] }}...</p>
+                    <p class="mt-2 mb-0">{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
                 </div>
             </div>
             {% endfor %}
         {% else %}
             <p class="text-muted">Пользователь ещё не опубликовал постов</p>
         {% endif %}
+        {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if is_owner %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Функция загрузки контента для вкладок
+    function loadTabContent(tabName, postIds, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (!postIds || postIds.length === 0) {
+            const messages = {
+                'liked': 'Вы ещё не лайкали постов',
+                'favorites': 'У вас пока нет избранных постов',
+                'read': 'Вы ещё не отмечали постов как прочитанные',
+                'posts': 'Вы ещё не опубликовали постов'
+            };
+            container.innerHTML = `<p class="text-muted text-center py-3">${messages[tabName] || 'Нет постов'}</p>`;
+            return;
+        }
+
+        // Загружаем посты по ID
+        const promises = postIds.map(id => 
+            fetch(`/api/posts/${id}`)
+                .then(response => response.json())
+                .then(data => data.post)
+                .catch(error => {
+                    console.error(`Ошибка загрузки поста ${id}:`, error);
+                    return null;
+                })
+        );
+
+        Promise.all(promises)
+            .then(posts => {
+                const validPosts = posts.filter(p => p !== null);
+                if (validPosts.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center py-3">Нет постов</p>';
+                    return;
+                }
+
+                let html = '';
+                validPosts.forEach(post => {
+                    const prefix = tabName === 'liked' ? '❤️ ' : tabName === 'favorites' ? '⭐ ' : tabName === 'read' ? '✓ ' : '';
+                    html += `
+                        <div class="card mb-3 border-secondary">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a href="/post/${post.id}" class="text-gold text-decoration-none">
+                                        ${prefix}${post.title || 'Без заголовка'}
+                                    </a>
+                                </h5>
+                                <small class="text-muted">
+                                    Автор: ${post.author} | ${formatDate(post.created_at)}
+                                </small>
+                                <p class="mt-2 mb-0">${post.content.substring(0, 150)}${post.content.length > 150 ? '...' : ''}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Ошибка загрузки постов:', error);
+                container.innerHTML = '<p class="text-muted text-center py-3">Ошибка загрузки</p>';
+            });
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'Неизвестно';
+        const date = new Date(dateString);
+        return date.toLocaleString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    // Обновляем содержимое вкладок при переключении
+    const tabs = document.querySelectorAll('a[data-toggle="tab"]');
+    tabs.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function (e) {
+            const tabId = e.target.getAttribute('href').substring(1);
+            
+            if (tabId === 'liked') {
+                fetch(`/api/interactions/user/{{ user.id }}/liked`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('liked-count').textContent = data.post_ids.length;
+                        loadTabContent('liked', data.post_ids, 'liked-content');
+                    });
+            } else if (tabId === 'favorites') {
+                fetch(`/api/interactions/user/{{ user.id }}/favorites`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('favorites-count').textContent = data.post_ids.length;
+                        loadTabContent('favorites', data.post_ids, 'favorites-content');
+                    });
+            } else if (tabId === 'read') {
+                fetch(`/api/interactions/user/{{ user.id }}/read`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('read-count').textContent = data.post_ids.length;
+                        loadTabContent('read', data.post_ids, 'read-content');
+                    });
+            }
+        });
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

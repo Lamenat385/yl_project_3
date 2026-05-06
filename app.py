@@ -432,6 +432,7 @@ def main():
     sync_vector_database()
 
     app.register_blueprint(posts_api.blueprint)
+
     app.register_blueprint(interactions_api.blueprint)
 
     # Flask-RESTful ресурсы

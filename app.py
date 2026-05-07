@@ -26,6 +26,8 @@ from backend.vector_db import vector_db
 from backend.errors import *
 from backend.api import posts_api
 from backend.api import interactions_api
+from backend.api import posts_import_api
+from backend.api import posts_metadata_api
 from backend.resources import posts_resources
 
 # ==================== КОНФИГУРАЦИЯ ====================
@@ -37,6 +39,28 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
 
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+# Настройка обработчика unauthorized для возврата JSON для API
+@login_manager.unauthorized_handler
+def unauthorized_callback():
+    # Проверяем, является ли запрос API-запросом
+    if request.path.startswith('/api/'):
+        # Возвращаем JSON-ответ для API-запросов
+        # Проверим тип контента, чтобы различать JSON и multipart/form-data запросы
+        content_type = request.headers.get('Content-Type', '')
+        if 'application/json' in content_type or request.method == 'POST' and 'multipart/form-data' in content_type:
+            return jsonify({
+                'success': False,
+                'error': 'Требуется авторизация'
+            }), 401
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Требуется авторизация'
+            }), 401
+    # Для обычных запросов возвращаем стандартный обработчик
+    return redirect('/login')
+
 api = Api(app)
 
 # Пути к файлам
@@ -386,7 +410,7 @@ def sync_vector_database():
             vector_db.sync_post(post.id, post.title or "Без заголовка", post.content, post.author)
             synced_count += 1
 
-        print(f"✅ Векторная база синхронизирована: {synced_count} постов")
+        print(f"[SUCCESS] Векторная база синхронизирована: {synced_count} постов")
     finally:
         db_sess.close()
 
@@ -432,8 +456,9 @@ def main():
     sync_vector_database()
 
     app.register_blueprint(posts_api.blueprint)
-
     app.register_blueprint(interactions_api.blueprint)
+    app.register_blueprint(posts_import_api.blueprint)
+    app.register_blueprint(posts_metadata_api.blueprint)
 
     # Flask-RESTful ресурсы
     api.add_resource(posts_resources.PostListResource, '/api/v2/posts')
@@ -444,10 +469,10 @@ main()
 
 if __name__ == '__main__':
     print("\n" + "=" * 50)
-    print("🚀 ЗАПУСК СЕРВЕРА")
+    print("[SERVER] STARTING SERVER")
     print("=" * 50)
-    print("📍 URL: http://0.0.0.0:5000")
-    print("🔧 Debug: ON")
+    print("URL: http://0.0.0.0:5000")
+    print("Debug: ON")
     print("=" * 50 + "\n")
 
     app.run(debug=True, host='0.0.0.0', port=5000)

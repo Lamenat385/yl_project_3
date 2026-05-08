@@ -215,6 +215,7 @@ def like_comment(comment_id):
             is_liked=True
         ).first()
         
+        print(f"[LIKE_POST] user_id={current_user.id}, post_id={post_id}, existing_interaction={interaction is not None}")
         if not interaction:
             interaction = UserPostInteraction(
                 user_id=current_user.id,
@@ -248,8 +249,11 @@ def like_comment(comment_id):
 @login_required
 def like_post(post_id):
     """
-    Поставить лайк посту.
-    
+    Поставить/убрать лайк посту.
+
+    Если пользователь еще не лайкал - ставит лайк.
+    Если пользователь уже лайкал - убирает лайк.
+
     Возвращает:
     {
         "success": true,
@@ -264,15 +268,16 @@ def like_post(post_id):
                 'success': False,
                 'error': 'Пост не найден'
             }), 404
-        
+
         # Проверяем, ставил ли пользователь лайк ранее
         interaction = db_sess.query(UserPostInteraction).filter_by(
             user_id=current_user.id,
-            post_id=post_id,
-            is_liked=True
+            post_id=post_id
         ).first()
-        
+
+        print(f"[LIKE_POST] user_id={current_user.id}, post_id={post_id}, existing_interaction={interaction is not None}")
         if not interaction:
+            # Пользователь еще не взаимодействовал с постом - ставим лайк
             interaction = UserPostInteraction(
                 user_id=current_user.id,
                 post_id=post_id,
@@ -281,12 +286,22 @@ def like_post(post_id):
             db_sess.add(interaction)
             post.likes_count += 1
         else:
-            # Убираем лайк
-            interaction.is_liked = False
-            post.likes_count -= 1
-        
+            # Пользователь уже взаимодействовал с постом
+            if interaction.is_liked:
+                # Убираем лайк
+                interaction.is_liked = False
+                post.likes_count -= 1
+            else:
+                # Ставим лайк (пользователь ранее убрал лайк или не лайкал)
+                interaction.is_liked = True
+                post.likes_count += 1
+
+        # Убедимся, что лайков не меньше 0
+        if post.likes_count < 0:
+            post.likes_count = 0
+
         db_sess.commit()
-        
+
         return jsonify({
             'success': True,
             'likes_count': post.likes_count

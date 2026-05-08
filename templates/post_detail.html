@@ -7,7 +7,10 @@
     <div class="col-lg-8">
         <div class="card border-gold mb-4">
             <div class="card-header bg-black border-gold">
-                <h2 class="text-gold mb-0">{{ post.title or 'Без заголовка' }}</h2>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2 class="text-gold mb-0">{{ post.title or 'Без заголовка' }}</h2>
+                    <small class="text-muted">ID: {{ post.id }}</small>
+                </div>
             </div>
             <div class="card-body">
                 <div class="mb-3 text-muted">
@@ -16,7 +19,9 @@
                         {{ post.author }}
                     </a> |
                     <strong>Дата:</strong>
-                    {{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else 'Неизвестно' }}
+                    {{ post.created_at.strftime('%d.%m.%Y %H:%M') if post.created_at else 'Неизвестно' }} |
+                    <strong>Лайков:</strong>
+                    <span id="post-likes-count">{{ post.likes_count or 0 }}</span>
                 </div>
 
                 <hr class="border-gold">
@@ -63,6 +68,39 @@
                     </div>
                 </div>
                 {% endif %}
+
+                <hr class="border-gold">
+
+                <!-- Форма добавления комментария -->
+                {% if current_user.is_authenticated %}
+                <div class="mt-4">
+                    <h4 class="text-gold mb-3">Добавить комментарий</h4>
+                    <div class="mb-3">
+                        <textarea class="form-control bg-black border-gold text-white" 
+                                  id="comment-content" 
+                                  rows="3" 
+                                  placeholder="Ваш комментарий..."></textarea>
+                        <div class="text-end mt-2">
+                            <button class="btn btn-gold" id="btn-add-comment">
+                                <i class="fas fa-paper-plane"></i> Отправить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="mt-4">
+                    <p class="text-muted">Для добавления комментария необходимо <a href="/login" class="text-gold">авторизоваться</a>.</p>
+                </div>
+                {% endif %}
+
+                <!-- Список комментариев -->
+                <div class="mt-4" id="comments-section">
+                    <h4 class="text-gold mb-3">Комментарии <span class="badge bg-gold text-black" id="comments-count">0</span></h4>
+                    <div id="comments-list">
+                        <!-- Комментарии будут загружены через JS -->
+                        <p class="text-muted">Загрузка комментариев...</p>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -91,11 +129,41 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => console.error('Ошибка загрузки статусов:', error));
 
+    // Загружаем комментарии
+    loadComments();
+
+    // Обработчик клика по кнопке добавления комментария
+    document.getElementById('btn-add-comment').addEventListener('click', function() {
+        const content = document.getElementById('comment-content').value.trim();
+        if (!content) {
+            alert('Пожалуйста, введите текст комментария');
+            return;
+        }
+
+        fetch(`/api/v1/posts/${postId}/comments`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content: content })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('comment-content').value = '';
+                loadComments();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Ошибка добавления комментария:', error));
+    });
+
     // Обработчик кликов по кнопкам
     buttons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             const action = this.dataset.action;
             const buttonId = this.id;
 
@@ -139,12 +207,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Обработчик лайка поста
+    document.getElementById('btn-like').addEventListener('click', function() {
+        fetch(`/api/v1/posts/${postId}/like`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('post-likes-count').textContent = data.likes_count;
+            }
+        })
+        .catch(error => console.error('Ошибка лайка:', error));
+    });
+
     function updateButtonState(buttonId, isActive, inactiveText, activeText) {
         const button = document.getElementById(buttonId);
         if (!button) return;
 
         const textSpan = button.querySelector('.btn-text');
-        
+
         button.dataset.active = isActive;
 
         if (isActive) {
@@ -154,6 +239,44 @@ document.addEventListener('DOMContentLoaded', function() {
             button.classList.remove('active');
             if (textSpan) textSpan.textContent = inactiveText;
         }
+    }
+
+    function loadComments() {
+        fetch(`/api/v1/posts/${postId}/comments`)
+            .then(response => response.json())
+            .then(data => {
+                const commentsList = document.getElementById('comments-list');
+                const commentsCount = document.getElementById('comments-count');
+                
+                if (data.success) {
+                    commentsCount.textContent = data.comments.length;
+                    
+                    if (data.comments.length === 0) {
+                        commentsList.innerHTML = '<p class="text-muted">Комментариев пока нет.</p>';
+                        return;
+                    }
+                    
+                    commentsList.innerHTML = data.comments.map(comment => `
+                        <div class="card bg-black border-gold mb-3">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong class="text-gold">${comment.username}</strong>
+                                        <small class="text-muted ms-2">${comment.created_at}</small>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <span class="text-gold me-2"><i class="fas fa-heart"></i> ${comment.likes_count}</span>
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-white">${comment.content_html || comment.content}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    commentsList.innerHTML = '<p class="text-danger">Ошибка загрузки комментариев.</p>';
+                }
+            })
+            .catch(error => console.error('Ошибка загрузки комментариев:', error));
     }
 });
 </script>

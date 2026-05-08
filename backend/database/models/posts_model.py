@@ -18,9 +18,15 @@ class PostModel(SqlAlchemyBase, SerializerMixin):
     path = sqlalchemy.Column(sqlalchemy.Text, nullable=True)
     attached_images = sqlalchemy.Column(sqlalchemy.Text, nullable=True)
     attached_files = sqlalchemy.Column(sqlalchemy.Text, nullable=True)
+    
+    # Счётчик лайков поста
+    likes_count = sqlalchemy.Column(sqlalchemy.Integer, default=0, nullable=False)
 
     user_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("users.id"), nullable=True, index=True)
     user = orm.relationship('UserModel')
+    
+    # Связь с комментариями
+    comments = orm.relationship('CommentModel', back_populates='post', cascade='all, delete-orphan')
 
     def render_content(self) -> str:
         """Рендерит Markdown в HTML"""

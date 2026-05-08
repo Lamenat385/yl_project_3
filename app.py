@@ -28,6 +28,9 @@ from backend.api import posts_api
 from backend.api import interactions_api
 from backend.api import posts_import_api
 from backend.api import posts_metadata_api
+from backend.api import auth_api
+from backend.api import posts_export_api
+from backend.api import comments_api
 from backend.resources import posts_resources
 
 # ==================== КОНФИГУРАЦИЯ ====================
@@ -459,6 +462,9 @@ def main():
     app.register_blueprint(interactions_api.blueprint)
     app.register_blueprint(posts_import_api.blueprint)
     app.register_blueprint(posts_metadata_api.blueprint)
+    app.register_blueprint(auth_api.blueprint)
+    app.register_blueprint(posts_export_api.blueprint)
+    app.register_blueprint(comments_api.blueprint)
 
     # Flask-RESTful ресурсы
     api.add_resource(posts_resources.PostListResource, '/api/v2/posts')

@@ -1,6 +1,0 @@
-.venv/
-.data/
-.idea
-.gitignore
-__pycache__
-qwen --resume 28a51703-eb3d-481e-a5f5-287da282cd5a

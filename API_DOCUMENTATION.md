@@ -372,6 +372,33 @@ print(response.json())
 
 ---
 
+### POST /api/v1/comments/<int:comment_id>/like
+
+Поставить/убрать лайк комментарию.
+
+**Пример на Python:**
+```python
+import requests
+
+session = requests.Session()
+session.post(
+    "http://localhost:5000/api/v1/auth/login",
+    json={"username": "sari", "password": "12345678"}
+)
+
+# Поставить лайк
+response = session.post("http://localhost:5000/api/v1/comments/1/like")
+print(response.json())
+# {"success": true, "likes_count": 1}
+
+# Убрать лайк
+response = session.post("http://localhost:5000/api/v1/comments/1/like")
+print(response.json())
+# {"success": true, "likes_count": 0}
+```
+
+---
+
 ## 4. Взаимодействия с постами
 
 ### POST /api/interactions/toggle

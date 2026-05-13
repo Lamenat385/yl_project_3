@@ -2,6 +2,7 @@
 API для работы с комментариями к постам
 """
 
+import logging
 from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 
@@ -12,13 +13,14 @@ from backend.database.models.user_post_interaction import UserPostInteraction
 from backend.database.markdown_parser import parse_markdown
 
 blueprint = Blueprint('comments_api', __name__)
+logger = logging.getLogger(__name__)
 
 
 @blueprint.route('/api/v1/posts/<int:post_id>/comments', methods=['GET'])
 def get_comments(post_id):
     """
     Получить все комментарии к посту.
-    
+
     Возвращает:
     {
         "comments": [
@@ -28,7 +30,6 @@ def get_comments(post_id):
                 "username": "username",
                 "content": "Текст комментария",
                 "content_html": "<p>Текст комментария</p>",
-                "likes_count": 5,
                 "created_at": "2025-05-08 10:30:00"
             }
         ]
@@ -42,9 +43,9 @@ def get_comments(post_id):
                 'success': False,
                 'error': 'Пост не найден'
             }), 404
-        
+
         comments = db_sess.query(CommentModel).filter_by(post_id=post_id).order_by(CommentModel.created_at.desc()).all()
-        
+
         comments_list = []
         for comment in comments:
             comments_list.append({
@@ -53,10 +54,9 @@ def get_comments(post_id):
                 'username': comment.user.username if comment.user else 'Аноним',
                 'content': comment.content,
                 'content_html': comment.content_html or parse_markdown(comment.content),
-                'likes_count': comment.likes_count,
                 'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
-        
+
         return jsonify({
             'success': True,
             'comments': comments_list
@@ -85,7 +85,6 @@ def add_comment(post_id):
             "username": "username",
             "content": "Текст комментария",
             "content_html": "<p>Текст комментария</p>",
-            "likes_count": 0,
             "created_at": "2025-05-08 10:30:00"
         }
     }
@@ -130,7 +129,6 @@ def add_comment(post_id):
                 'username': current_user.username,
                 'content': comment.content,
                 'content_html': comment.content_html,
-                'likes_count': comment.likes_count,
                 'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M:%S')
             }
         }), 201
@@ -149,7 +147,7 @@ def add_comment(post_id):
 def delete_comment(comment_id):
     """
     Удалить комментарий.
-    
+
     Возвращает:
     {
         "success": true
@@ -163,17 +161,17 @@ def delete_comment(comment_id):
                 'success': False,
                 'error': 'Комментарий не найден'
             }), 404
-        
+
         # Проверяем, что пользователь является автором комментария
         if comment.user_id != current_user.id:
             return jsonify({
                 'success': False,
                 'error': 'У вас нет прав для удаления этого комментария'
             }), 403
-        
+
         db_sess.delete(comment)
         db_sess.commit()
-        
+
         return jsonify({
             'success': True
         })
@@ -182,64 +180,6 @@ def delete_comment(comment_id):
         return jsonify({
             'success': False,
             'error': f'Ошибка при удалении комментария: {str(e)}'
-        }), 500
-    finally:
-        db_sess.close()
-
-
-@blueprint.route('/api/v1/comments/<int:comment_id>/like', methods=['POST'])
-@login_required
-def like_comment(comment_id):
-    """
-    Поставить лайк комментарию.
-    
-    Возвращает:
-    {
-        "success": true,
-        "likes_count": 5
-    }
-    """
-    db_sess = db_session.create_session()
-    try:
-        comment = db_sess.get(CommentModel, comment_id)
-        if not comment:
-            return jsonify({
-                'success': False,
-                'error': 'Комментарий не найден'
-            }), 404
-        
-        # Проверяем, ставил ли пользователь лайк ранее
-        interaction = db_sess.query(UserPostInteraction).filter_by(
-            user_id=current_user.id,
-            post_id=comment.post_id,
-            is_liked=True
-        ).first()
-        
-        print(f"[LIKE_POST] user_id={current_user.id}, post_id={post_id}, existing_interaction={interaction is not None}")
-        if not interaction:
-            interaction = UserPostInteraction(
-                user_id=current_user.id,
-                post_id=comment.post_id,
-                is_liked=True
-            )
-            db_sess.add(interaction)
-            comment.likes_count += 1
-        else:
-            # Убираем лайк
-            interaction.is_liked = False
-            comment.likes_count -= 1
-        
-        db_sess.commit()
-        
-        return jsonify({
-            'success': True,
-            'likes_count': comment.likes_count
-        })
-    except Exception as e:
-        db_sess.rollback()
-        return jsonify({
-            'success': False,
-            'error': f'Ошибка при лайке комментария: {str(e)}'
         }), 500
     finally:
         db_sess.close()

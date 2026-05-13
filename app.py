@@ -477,7 +477,7 @@ if __name__ == '__main__':
     print("\n" + "=" * 50)
     print("[SERVER] STARTING SERVER")
     print("=" * 50)
-    print("URL: http://0.0.0.0:5000")
+    print("URL: http://127.0.0.1:5000")
     print("Debug: ON")
     print("=" * 50 + "\n")
 

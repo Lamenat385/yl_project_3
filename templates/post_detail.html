@@ -33,33 +33,33 @@
                         {{ post.content|safe }}
                     {% endif %}
                 </div>
-                
+
                 <!-- Кнопки взаимодействий -->
                 {% if current_user.is_authenticated %}
                 <hr class="border-gold">
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <div class="d-flex">
                         <!-- Лайк -->
-                        <button class="btn btn-sm btn-interaction mr-2" 
-                                id="btn-like" 
+                        <button class="btn btn-sm btn-interaction mr-2"
+                                id="btn-like"
                                 data-post-id="{{ post.id }}"
                                 data-action="like"
                                 data-active="false">
                             <i class="fas fa-heart"></i> <span class="btn-text">Нравится</span>
                         </button>
-                        
+
                         <!-- Прочитано -->
-                        <button class="btn btn-sm btn-interaction mr-2" 
-                                id="btn-read" 
+                        <button class="btn btn-sm btn-interaction mr-2"
+                                id="btn-read"
                                 data-post-id="{{ post.id }}"
                                 data-action="read"
                                 data-active="false">
                             <i class="fas fa-check"></i> <span class="btn-text">Прочитано</span>
                         </button>
-                        
+
                         <!-- Избранное -->
-                        <button class="btn btn-sm btn-interaction mr-2" 
-                                id="btn-favorite" 
+                        <button class="btn btn-sm btn-interaction mr-2"
+                                id="btn-favorite"
                                 data-post-id="{{ post.id }}"
                                 data-action="favorite"
                                 data-active="false">
@@ -76,9 +76,9 @@
                 <div class="mt-4">
                     <h4 class="text-gold mb-3">Добавить комментарий</h4>
                     <div class="mb-3">
-                        <textarea class="form-control bg-black border-gold text-white" 
-                                  id="comment-content" 
-                                  rows="3" 
+                        <textarea class="form-control bg-black border-gold text-white"
+                                  id="comment-content"
+                                  rows="3"
                                   placeholder="Ваш комментарий..."></textarea>
                         <div class="text-end mt-2">
                             <button class="btn btn-gold" id="btn-add-comment">
@@ -242,41 +242,50 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function loadComments() {
+        console.log('[LOAD_COMMENTS] === START ===');
         fetch(`/api/v1/posts/${postId}/comments`)
             .then(response => response.json())
             .then(data => {
+                console.log('[LOAD_COMMENTS] Response:', data);
                 const commentsList = document.getElementById('comments-list');
                 const commentsCount = document.getElementById('comments-count');
-                
+
                 if (data.success) {
                     commentsCount.textContent = data.comments.length;
-                    
+                    console.log('[LOAD_COMMENTS] Comments count:', data.comments.length);
+
                     if (data.comments.length === 0) {
                         commentsList.innerHTML = '<p class="text-muted">Комментариев пока нет.</p>';
+                        console.log('[LOAD_COMMENTS] No comments');
                         return;
                     }
-                    
-                    commentsList.innerHTML = data.comments.map(comment => `
-                        <div class="card bg-black border-gold mb-3">
+
+                    commentsList.innerHTML = data.comments.map(comment => {
+                        console.log('[LOAD_COMMENTS] Comment:', comment.id);
+                        return `
+                        <div class="card bg-black border-gold mb-3" id="comment-${comment.id}">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <strong class="text-gold">${comment.username}</strong>
                                         <small class="text-muted ms-2">${comment.created_at}</small>
                                     </div>
-                                    <div class="d-flex align-items-center">
-                                        <span class="text-gold me-2"><i class="fas fa-heart"></i> ${comment.likes_count}</span>
-                                    </div>
                                 </div>
                                 <div class="mt-2 text-white">${comment.content_html || comment.content}</div>
                             </div>
                         </div>
-                    `).join('');
+                    `}).join('');
+                    console.log('[LOAD_COMMENTS] Comments rendered');
                 } else {
                     commentsList.innerHTML = '<p class="text-danger">Ошибка загрузки комментариев.</p>';
+                    console.error('[LOAD_COMMENTS] Error:', data.error);
                 }
+                console.log('[LOAD_COMMENTS] === END ===');
             })
-            .catch(error => console.error('Ошибка загрузки комментариев:', error));
+            .catch(error => {
+                console.error('[LOAD_COMMENTS] Error:', error);
+                console.log('[LOAD_COMMENTS] === END ===');
+            });
     }
 });
 </script>

@@ -24,9 +24,6 @@ class CommentModel(SqlAlchemyBase, SerializerMixin):
     # HTML-версия комментария (после парсинга Markdown)
     content_html = sqlalchemy.Column(sqlalchemy.Text, nullable=True)
 
-    # Количество лайков на комментарии
-    likes_count = sqlalchemy.Column(sqlalchemy.Integer, default=0, nullable=False)
-
     # Дата создания и обновления
     created_at = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.datetime.now, index=True)
     updated_at = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now)

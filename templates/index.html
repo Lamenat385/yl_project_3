@@ -12,79 +12,47 @@
     {% endif %}
 </div>
 
-{% if posts %}
-    {% for item in posts %}
-    {% set interaction = interactions.get(item.id) %}
-    
-    {% if not interaction or not interaction.is_not_interested %}
-    <div class="card mb-3 border-secondary feed-post-card" id="post-card-{{ item.id }}" data-post-id="{{ item.id }}">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
-                <div class="flex-grow-1">
-                    <h5 class="card-title text-gold">
-                        <a href="/post/{{ item.id }}" class="text-decoration-none">
-                            {{ item.title or 'Без заголовка' }}
-                        </a>
-                    </h5>
-                    <h6 class="card-subtitle mb-2 text-muted">
-                        Автор: <a href="/profile/{{ item.user_id }}" class="text-gold">
-                            {{ item.author }}
-                        </a> |
-                        {{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else 'Неизвестно' }}
-                    </h6>
-                </div>
-                
-                <!-- Кнопки действий в ленте (только для авторизованных) -->
-                {% if current_user.is_authenticated %}
-                <div class="d-flex flex-column align-items-end ml-3">
-                    <!-- Лайк -->
-                    <button class="btn btn-sm btn-lazy mb-1 btn-like-feed {% if interaction and interaction.is_liked %}active{% endif %}"
-                            data-post-id="{{ item.id }}"
-                            data-action="like"
-                            title="Нравится">
-                        <i class="fas fa-heart"></i>
-                    </button>
-
-                    <!-- В избранное -->
-                    <button class="btn btn-sm btn-lazy mb-1 btn-favorite-feed {% if interaction and interaction.is_favorite %}active{% endif %}"
-                            data-post-id="{{ item.id }}"
-                            data-action="favorite"
-                            title="Добавить в избранное">
-                        <i class="fas fa-star"></i>
-                    </button>
-
-                    <!-- Прочитано -->
-                    <button class="btn btn-sm btn-lazy mb-1 btn-read-feed {% if interaction and interaction.is_read %}active{% endif %}"
-                            data-post-id="{{ item.id }}"
-                            data-action="read"
-                            title="Отметить как прочитанное">
-                        <i class="fas fa-check"></i>
-                    </button>
-
-                    <!-- Не интересно -->
-                    <button class="btn btn-sm btn-lazy btn-not-interested-feed {% if interaction and interaction.is_not_interested %}active{% endif %}"
-                            data-post-id="{{ item.id }}"
-                            data-action="not_interested"
-                            title="Скрыть из ленты">
-                        <i class="fas fa-eye-slash"></i>
-                    </button>
-                </div>
-                {% endif %}
+{% if not current_user.is_authenticated %}
+    {% if posts %}
+        {% for item in posts %}
+        <div class="card mb-3 border-secondary feed-post-card" id="post-card-{{ item.id }}">
+            <div class="card-body">
+                <h5 class="card-title text-gold">
+                    <a href="/post/{{ item.id }}" class="text-decoration-none">
+                        {{ item.title or 'Без заголовка' }}
+                    </a>
+                </h5>
+                <h6 class="card-subtitle mb-2 text-muted">
+                    Автор: <a href="/profile/{{ item.user_id }}" class="text-gold">
+                        {{ item.author }}
+                    </a> |
+                    {{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else 'Неизвестно' }}
+                </h6>
+                <p class="card-text text-white">
+                    {{ item.content[:200] }}{% if item.content|length > 200 %}...{% endif %}
+                </p>
+                <a href="/post/{{ item.id }}" class="btn btn-sm btn-outline-warning">
+                    Читать далее →
+                </a>
             </div>
-            
-            <p class="card-text text-white">
-                {{ item.content[:200] }}{% if item.content|length > 200 %}...{% endif %}
-            </p>
-            <a href="/post/{{ item.id }}" class="btn btn-sm btn-outline-warning">
-                Читать далее →
-            </a>
         </div>
-    </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info text-center">
+            <p class="mb-0">📭 Постов пока нет. Будьте первым!</p>
+        </div>
     {% endif %}
-    {% endfor %}
 {% else %}
-    <div class="alert alert-info text-center">
-        <p class="mb-0">📭 Постов пока нет. Будьте первым!</p>
+    <!-- Рекомендательная лента (infinite scroll) -->
+    <div id="feed-container"></div>
+    <div id="feed-loader" class="text-center my-4" style="display:none;">
+        <div class="spinner-border text-warning" role="status">
+            <span class="sr-only">Загрузка...</span>
+        </div>
+        <p class="text-muted mt-2">Загружаем посты...</p>
+    </div>
+    <div id="feed-end" class="alert alert-info text-center" style="display:none;">
+        <p class="mb-0">📭 Больше постов нет</p>
     </div>
 {% endif %}
 {% endblock %}
@@ -92,98 +60,151 @@
 {% block extra_js %}
 {% if current_user.is_authenticated %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Обработчик для всех кнопок взаимодействий в ленте
-    document.querySelectorAll('.btn-like-feed, .btn-favorite-feed, .btn-read-feed, .btn-not-interested-feed').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
+(function() {
+    var feedContainer = document.getElementById('feed-container');
+    var feedLoader = document.getElementById('feed-loader');
+    var feedEnd = document.getElementById('feed-end');
 
-            const postId = this.dataset.postId;
-            const action = this.dataset.action;
-            const btn = this;
+    if (!feedContainer) return;
 
-            // Отправляем запрос на сервер
-            fetch('/api/interactions/toggle', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    post_id: parseInt(postId),
-                    action: action
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Переключаем состояние кнопки
-                    btn.classList.toggle('active');
-                    
-                    // Обновляем в зависимости от типа действия
-                    if (action === 'not_interested' && data.state) {
-                        // Скрываем пост из ленты
-                        const card = document.getElementById(`post-card-${postId}`);
-                        if (card) {
-                            card.style.transition = 'opacity 0.5s, transform 0.5s';
-                            card.style.opacity = '0';
-                            card.style.transform = 'translateX(-100%)';
-                            setTimeout(() => {
-                                card.style.display = 'none';
-                            }, 500);
-                        }
-                    }
+    var BATCH_SIZE = 10;
+    var shownIds = new Set();
+    var isLoading = false;
+    var hasMore = true;
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function postCardHTML(post) {
+        var title = post.title || 'Без заголовка';
+        var content = post.content || '';
+        var author = post.author || 'Неизвестен';
+        var userId = post.user_id || 0;
+        var createdAt = post.created_at
+            ? new Date(post.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : 'Неизвестно';
+        var postId = post.id;
+
+        return '<div class="card mb-3 border-secondary feed-post-card" id="post-card-' + postId + '" data-post-id="' + postId + '">' +
+            '<div class="card-body">' +
+                '<div class="d-flex justify-content-between align-items-start">' +
+                    '<div class="flex-grow-1">' +
+                        '<h5 class="card-title text-gold">' +
+                            '<a href="/post/' + postId + '" class="text-decoration-none">' + escapeHtml(title) + '</a>' +
+                        '</h5>' +
+                        '<h6 class="card-subtitle mb-2 text-muted">' +
+                            'Автор: <a href="/profile/' + userId + '" class="text-gold">' + escapeHtml(author) + '</a> | ' + createdAt +
+                        '</h6>' +
+                    '</div>' +
+                    '<div class="d-flex flex-column align-items-end ml-3">' +
+                        '<button class="btn btn-sm btn-lazy mb-1 btn-like-feed" data-post-id="' + postId + '" data-action="like" title="Нравится">' +
+                            '<i class="fas fa-heart"></i>' +
+                        '</button>' +
+                        '<button class="btn btn-sm btn-lazy mb-1 btn-favorite-feed" data-post-id="' + postId + '" data-action="favorite" title="В избранное">' +
+                            '<i class="fas fa-star"></i>' +
+                        '</button>' +
+                        '<button class="btn btn-sm btn-lazy mb-1 btn-read-feed" data-post-id="' + postId + '" data-action="read" title="Прочитано">' +
+                            '<i class="fas fa-check"></i>' +
+                        '</button>' +
+                        '<button class="btn btn-sm btn-lazy btn-not-interested-feed" data-post-id="' + postId + '" data-action="not_interested" title="Скрыть">' +
+                            '<i class="fas fa-eye-slash"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+                '<p class="card-text text-white">' + escapeHtml(content) + '</p>' +
+                '<a href="/post/' + postId + '" class="btn btn-sm btn-outline-warning">Читать далее →</a>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function loadFeed() {
+        if (isLoading || !hasMore) return;
+        isLoading = true;
+        feedLoader.style.display = 'block';
+
+        var excludeParam = Array.from(shownIds).join(',');
+        fetch('/api/feed?batch_size=' + BATCH_SIZE + '&exclude_ids=' + encodeURIComponent(excludeParam))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success && data.posts.length > 0) {
+                    data.posts.forEach(function(post) {
+                        shownIds.add(post.id);
+                        feedContainer.insertAdjacentHTML('beforeend', postCardHTML(post));
+                    });
+                    hasMore = data.has_more;
                 } else {
-                    console.error('Ошибка переключения:', data.error);
+                    hasMore = false;
+                }
+                if (!hasMore) {
+                    feedEnd.style.display = 'block';
                 }
             })
-            .catch(error => console.error('Ошибка:', error));
-        });
+            .catch(function(err) {
+                console.error('Feed load error:', err);
+            })
+            .finally(function() {
+                isLoading = false;
+                feedLoader.style.display = 'none';
+            });
+    }
+
+    // IntersectionObserver для бесконечного скролла
+    var observer = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+            loadFeed();
+        }
+    }, { rootMargin: '200px' });
+
+    if (feedLoader) observer.observe(feedLoader);
+
+    // Делегирование кликов по кнопкам взаимодействий
+    feedContainer.addEventListener('click', function(e) {
+        var btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+
+        e.preventDefault();
+        var postId = parseInt(btn.dataset.postId);
+        var action = btn.dataset.action;
+
+        fetch('/api/interactions/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ post_id: postId, action: action })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                btn.classList.toggle('active');
+
+                if (action === 'not_interested' && data.state) {
+                    var card = document.getElementById('post-card-' + postId);
+                    if (card) {
+                        card.style.transition = 'opacity 0.5s, transform 0.5s';
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateX(-100%)';
+                        setTimeout(function() { card.style.display = 'none'; }, 500);
+                    }
+                }
+
+                // Запись взаимодействия в буферы рекомендаций
+                if (data.state && (action === 'like' || action === 'favorite' || action === 'read')) {
+                    fetch('/api/feed/record', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ post_id: postId, action: action })
+                    });
+                }
+            }
+        })
+        .catch(function(err) { console.error('Interaction error:', err); });
     });
-});
+
+    // Первая загрузка
+    loadFeed();
+})();
 </script>
-
-<style>
-.btn-lazy {
-    background-color: transparent;
-    border: 1px solid #555;
-    color: #777;
-    padding: 0.2rem 0.5rem;
-    transition: all 0.3s ease;
-}
-
-.btn-lazy:hover {
-    border-color: var(--gold-primary);
-    color: var(--gold-primary);
-}
-
-.btn-lazy.active {
-    background-color: var(--gold-primary);
-    border-color: var(--gold-primary);
-    color: #000;
-}
-
-.btn-like-feed.active {
-    background-color: #e74c3c;
-    border-color: #e74c3c;
-    color: #fff;
-}
-
-.btn-favorite-feed.active {
-    background-color: #D4AF37;
-    color: #000;
-}
-
-.btn-read-feed.active {
-    background-color: #27ae60;
-    border-color: #27ae60;
-    color: #fff;
-}
-
-.btn-not-interested-feed.active {
-    background-color: #dc3545;
-    border-color: #dc3545;
-    color: #fff;
-}
-</style>
 {% endif %}
 {% endblock %}

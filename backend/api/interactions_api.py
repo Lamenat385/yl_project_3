@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 
 from backend.database import db_session
 from backend.database.models.user_post_interaction import UserPostInteraction
+from backend.recommendation import engine
 
 blueprint = Blueprint('interactions_api', __name__)
 
@@ -73,13 +74,25 @@ def toggle_interaction():
 
         # Переключаем значение
         current_value = getattr(interaction, field_name)
-        setattr(interaction, field_name, not current_value)
+        new_state = not current_value
+        setattr(interaction, field_name, new_state)
         db_sess.commit()
+
+        # Записываем взаимодействие в буферы рекомендаций (только активация)
+        if new_state and action in ('like', 'favorite', 'read'):
+            try:
+                engine.record_interaction(
+                    user_id=current_user.id,
+                    post_id=post_id,
+                    action=action,
+                )
+            except Exception:
+                pass  # не блокируем основной ответ из-за ошибки в рекомендациях
 
         return jsonify({
             'success': True,
             'action': action,
-            'state': not current_value
+            'state': new_state
         })
     except Exception:
         db_sess.rollback()

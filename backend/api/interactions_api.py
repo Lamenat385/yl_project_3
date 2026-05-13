@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 
 from backend.database import db_session
 from backend.database.models.user_post_interaction import UserPostInteraction
+from backend.database.models.posts_model import PostModel
 from backend.recommendation import engine
 
 blueprint = Blueprint('interactions_api', __name__)
@@ -76,6 +77,18 @@ def toggle_interaction():
         current_value = getattr(interaction, field_name)
         new_state = not current_value
         setattr(interaction, field_name, new_state)
+
+        # Синхронизируем likes_count в PostModel при лайке/анлайке
+        if action == 'like':
+            post = db_sess.get(PostModel, post_id)
+            if post:
+                if new_state:
+                    post.likes_count += 1
+                else:
+                    post.likes_count -= 1
+                if post.likes_count < 0:
+                    post.likes_count = 0
+
         db_sess.commit()
 
         # Записываем взаимодействие в буферы рекомендаций (только активация)

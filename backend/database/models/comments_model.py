@@ -28,6 +28,9 @@ class CommentModel(SqlAlchemyBase, SerializerMixin):
     created_at = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.datetime.now, index=True)
     updated_at = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.datetime.now, onupdate=datetime.datetime.now)
 
+    # Счётчик лайков комментария
+    likes_count = sqlalchemy.Column(sqlalchemy.Integer, default=0, nullable=False)
+
     # Связи
     user = orm.relationship('UserModel', foreign_keys=[user_id])
     post = orm.relationship('PostModel', foreign_keys=[post_id], back_populates='comments')

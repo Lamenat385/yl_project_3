@@ -402,14 +402,17 @@ class RecommendationEngine:
     # ─── Пакетная генерация ленты ───────────────────
 
     def generate_feed_batch(
-        self, user_id: int, batch_size: int = 10
+        self, user_id: int, batch_size: int = 10,
+        initial_exclude_ids: set = None
     ) -> list:
         """
         Генерирует батч постов для infinite scroll.
         В рамках одного батча посты не дублируются.
+
+        initial_exclude_ids — ID постов, уже показанных клиенту в предыдущих батчах.
         """
         posts = []
-        exclude_ids: set = set()
+        exclude_ids: set = initial_exclude_ids.copy() if initial_exclude_ids else set()
         max_attempts = batch_size * 5  # предохранитель от бесконечного цикла
 
         for _ in range(max_attempts):

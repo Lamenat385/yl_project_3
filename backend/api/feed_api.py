@@ -37,6 +37,7 @@ def get_feed():
     posts = engine.generate_feed_batch(
         user_id=current_user.id,
         batch_size=batch_size,
+        initial_exclude_ids=exclude_ids,
     )
 
     return jsonify({

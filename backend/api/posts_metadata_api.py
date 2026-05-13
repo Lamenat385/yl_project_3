@@ -2,9 +2,9 @@
 API для получения метаданных постов и управления избранным
 """
 
+import datetime
 from flask import Blueprint, jsonify, request, send_file
 from flask_login import login_required, current_user
-from werkzeug.security import check_password_hash
 
 from backend.database import db_session
 from backend.database.models.posts_model import PostModel
@@ -12,6 +12,7 @@ from backend.database.models.users_model import UserModel
 from backend.database.models.user_post_interaction import UserPostInteraction
 
 import io
+import json
 import zipfile
 from pathlib import Path
 
@@ -119,7 +120,7 @@ def export_user_favorites(username):
             }), 403
         
         # Проверяем пароль
-        if not check_password_hash(user.passwd_hash, password):
+        if not user.check_password(password):
             return jsonify({
                 'success': False,
                 'error': 'Неверный пароль'
@@ -149,11 +150,10 @@ def export_user_favorites(username):
         memory_file = io.BytesIO()
         with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             # Добавляем файл с метаданными
-            import json
             metadata = {
                 'username': username,
                 'user_id': user.id,
-                'export_date': str(__import__('datetime').datetime.now()),
+                'export_date': str(datetime.datetime.now()),
                 'posts_count': len(posts),
                 'posts': []
             }

@@ -17,7 +17,6 @@ blueprint = Blueprint('posts_export_api', __name__)
 
 
 @blueprint.route('/api/v1/posts/<int:post_id>/export', methods=['GET'])
-@login_required
 def export_post(post_id):
     """
     Экспорт поста в zip-архив.
@@ -33,7 +32,6 @@ def export_post(post_id):
 
     Статусы:
     200 - Успешный экспорт
-    403 - Пост не принадлежит пользователю
     404 - Пост не найден
     """
     db_sess = db_session.create_session()
@@ -44,13 +42,6 @@ def export_post(post_id):
                 'success': False,
                 'error': 'Пост не найден'
             }), 404
-
-        # Проверяем, что пост принадлежит пользователю
-        if post.user_id != current_user.id and not current_user.username == 'admin':
-            return jsonify({
-                'success': False,
-                'error': 'У вас нет прав для экспорта этого поста'
-            }), 403
 
         # Создаем zip в памяти
         memory_file = io.BytesIO()

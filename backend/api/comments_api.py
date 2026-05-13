@@ -2,7 +2,6 @@
 API для работы с комментариями к постам
 """
 
-import logging
 from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 
@@ -11,9 +10,9 @@ from backend.database.models.comments_model import CommentModel
 from backend.database.models.posts_model import PostModel
 from backend.database.models.user_post_interaction import UserPostInteraction
 from backend.database.markdown_parser import parse_markdown
+from backend.recommendation import engine
 
 blueprint = Blueprint('comments_api', __name__)
-logger = logging.getLogger(__name__)
 
 
 @blueprint.route('/api/v1/posts/<int:post_id>/comments', methods=['GET'])
@@ -54,6 +53,7 @@ def get_comments(post_id):
                 'username': comment.user.username if comment.user else 'Аноним',
                 'content': comment.content,
                 'content_html': comment.content_html or parse_markdown(comment.content),
+                'likes_count': 0,
                 'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
 
@@ -215,7 +215,6 @@ def like_post(post_id):
             post_id=post_id
         ).first()
 
-        print(f"[LIKE_POST] user_id={current_user.id}, post_id={post_id}, existing_interaction={interaction is not None}")
         if not interaction:
             # Пользователь еще не взаимодействовал с постом - ставим лайк
             interaction = UserPostInteraction(
@@ -241,6 +240,17 @@ def like_post(post_id):
             post.likes_count = 0
 
         db_sess.commit()
+
+        # Синхронизируем взаимодействие с рекомендательным движком
+        if interaction.is_liked:
+            try:
+                engine.record_interaction(
+                    user_id=current_user.id,
+                    post_id=post_id,
+                    action='like',
+                )
+            except Exception:
+                pass
 
         return jsonify({
             'success': True,

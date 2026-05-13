@@ -7,8 +7,7 @@ import uuid
 import zipfile
 from pathlib import Path
 from flask import Blueprint, jsonify, request, send_file, session
-from flask_login import login_required, current_user
-from werkzeug.security import check_password_hash
+from flask_login import current_user, login_user
 
 from backend.database import db_session
 from backend.database.models.posts_model import PostModel
@@ -111,10 +110,6 @@ def import_post_from_zip():
     }
     """
     # Проверяем аутентификацию вручную
-    from backend.database import db_session
-    from backend.database.models.users_model import UserModel
-    from flask_login import login_user
-    
     # Проверяем, аутентифицирован ли пользователь через стандартный способ
     if current_user.is_authenticated:
         pass  # Пользователь аутентифицирован, продолжаем выполнение
@@ -280,10 +275,6 @@ def export_post_to_zip(post_id):
         └── document.pdf
     """
     # Проверяем аутентификацию вручную
-    from backend.database import db_session
-    from backend.database.models.users_model import UserModel
-    from flask_login import login_user
-    
     # Проверяем, аутентифицирован ли пользователь через стандартный способ
     if current_user.is_authenticated:
         pass  # Пользователь аутентифицирован, продолжаем выполнение

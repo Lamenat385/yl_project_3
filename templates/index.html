@@ -45,6 +45,8 @@
 {% else %}
     <!-- Рекомендательная лента (infinite scroll) -->
     <div id="feed-container"></div>
+    <!-- Сенсорный элемент ВСЕГДА в DOM — по нему IntersectionObserver триггерит подгрузку -->
+    <div id="feed-sentinel" style="height:1px;"></div>
     <div id="feed-loader" class="text-center my-4" style="display:none;">
         <div class="spinner-border text-warning" role="status">
             <span class="sr-only">Загрузка...</span>
@@ -62,6 +64,7 @@
 <script>
 (function() {
     var feedContainer = document.getElementById('feed-container');
+    var feedSentinel = document.getElementById('feed-sentinel');
     var feedLoader = document.getElementById('feed-loader');
     var feedEnd = document.getElementById('feed-end');
 
@@ -151,14 +154,14 @@
             });
     }
 
-    // IntersectionObserver для бесконечного скролла
+    // IntersectionObserver следит за сенсором (он всегда в DOM, всегда видим)
     var observer = new IntersectionObserver(function(entries) {
         if (entries[0].isIntersecting && hasMore && !isLoading) {
             loadFeed();
         }
-    }, { rootMargin: '200px' });
+    }, { rootMargin: '300px' });
 
-    if (feedLoader) observer.observe(feedLoader);
+    if (feedSentinel) observer.observe(feedSentinel);
 
     // Делегирование кликов по кнопкам взаимодействий
     feedContainer.addEventListener('click', function(e) {
@@ -189,7 +192,6 @@
                     }
                 }
 
-                // Запись взаимодействия в буферы рекомендаций
                 if (data.state && (action === 'like' || action === 'favorite' || action === 'read')) {
                     fetch('/api/feed/record', {
                         method: 'POST',
